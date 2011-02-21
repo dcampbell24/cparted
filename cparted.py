@@ -92,7 +92,7 @@ class OptMenu:
         options = []
         for opt in self.vis_options:
             options.append(opt[NAME])
-        return "[" + "]  [".join(options) + "]"
+        return "[" + "] [".join(options) + "]"
 
     def call(self, option):
         """Attempt to call an option specified by the correspond string."""
