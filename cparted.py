@@ -72,15 +72,15 @@ class OptMenu:
     and contains the options functions"""
 
     def __init__(self, window, partition):
-        self.part_opts = ([("Bootable", self.bootable), ("Delete", self.delete),
-                           ("Help", self.help_), ("Maximixe", self.maximize),
-                           ("Print", self.print_), ("Quit", self.quit),
-                           ("Type", self.type_), ("Units", self.units),
-                           ("Write", self.write)])
-        self.free_opts = ([("Help", self.help_), ("New", self.new),
-                           ("Print", self.print_), ("Quit", self.quit),
-                           ("Units", self.units), ("Write", self.write),
-                           ("New Table", self.new_table)])
+        self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
+                          ("Help", self.help_), ("Maximize", self.maximize),
+                          ("Print", self.print_), ("Quit", self.quit),
+                          ("Type", self.type_), ("Units", self.units),
+                          ("Write", self.write))
+        self.free_opts = (("Help", self.help_), ("New", self.new),
+                          ("Print", self.print_), ("Quit", self.quit),
+                          ("Units", self.units), ("Write", self.write),
+                          ("New Table", self.new_table))
         self.partition(partition)
         self.window = window
         self.window_lines, self.window_width = window.getmaxyx()
@@ -93,6 +93,19 @@ class OptMenu:
         for opt in self.vis_options:
             options.append(opt[NAME])
         return "[" + "]  [".join(options) + "]"
+
+    def call(self, option):
+        """Attempt to call an option specified by the correspond string."""
+        names, funcs = zip(*self.vis_options)
+        if option == "Selected":
+            funcs[self.selected_option]()
+            return
+        try:
+            i = names.index(option)
+            funcs[i]()
+        except ValueError:
+            self.draw_info("%s is not a legal option for this partition." %
+                           option)
 
     def partition(self, part):
         self.__partition = part
@@ -113,14 +126,18 @@ class OptMenu:
                 coords.append((j + self.offset(), i - j + 1))
         return coords
 
+    def draw_info(self, string):
+        """Add information line to the bottom of the main window"""
+        self.window.hline(self.menu_line + 2, 0, " ", self.window_width)
+        addstr_centered(self.window, self.window_width, self.menu_line + 2,
+                        string)
+
     def draw_menu(self):
         """Redraw the menu when switching partitions."""
         self.window.hline(self.menu_line, 0, " ", self.window_width)
         self.window.addstr(self.menu_line, self.offset(), str(self))
         self.chgat_selected(curses.A_STANDOUT)
-        self.window.hline(self.menu_line + 2, 0, " ", self.window_width)
-        addstr_centered(self.window, self.window_width, self.menu_line + 2,
-                        self.vis_options[self.selected_option][FUNC].__doc__)
+        self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
     def chgat_selected(self, attr):
         self.window.chgat(self.menu_line,
@@ -128,7 +145,7 @@ class OptMenu:
                           self.opt_coords()[self.selected_option][END], attr)
 
     def left_right(self, key):
-        if key == "KEY_LEFT":
+        if key == curses.KEY_LEFT:
             if self.selected_option > 0:
                 self.chgat_selected(curses.A_NORMAL)
                 self.selected_option -= 1
@@ -137,9 +154,7 @@ class OptMenu:
             self.chgat_selected(curses.A_NORMAL)
             self.selected_option += 1
             self.chgat_selected(curses.A_STANDOUT)
-        self.window.hline(self.menu_line + 2, 0, " ", self.window_width)
-        addstr_centered(self.window, self.window_width, self.menu_line + 2,
-                        self.vis_options[self.selected_option][FUNC].__doc__)
+        self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
     def bootable(self):
         """Toggle bootable flag of the current partition."""
@@ -226,7 +241,7 @@ def nodeName(part):
 
 
 def up_down(window, key, high_part, part_count):
-    if key == "KEY_UP":
+    if key == curses.KEY_UP:
         if high_part > 0:
             window.chgat(PART_TABLE + high_part, 0, curses.A_NORMAL)
             high_part -= 1
@@ -283,18 +298,45 @@ def start_curses(stdscr, device, disk, partitions, free_space):
 
     # The main loop that captures user input.
     while True:
-        key = stdscr.getkey()
-        if key == "KEY_DOWN" or key == "KEY_UP":
+        key = stdscr.getch()
+        #    stdscr_cntr(16, str(key))
+        if key == -1: # no input
+            continue
+        if key == curses.KEY_RESIZE:
+            continue
+        if key == curses.KEY_DOWN or key == curses.KEY_UP:
             high_part = up_down(stdscr, key, high_part, len(partitions))
             options_menu.selected_option = 1 # Delete/New
             options_menu.partition(partitions[high_part])
             options_menu.draw_menu()
-        if key == "KEY_RIGHT" or key == "KEY_LEFT":
+        if key == curses.KEY_RIGHT or key == curses.KEY_LEFT:
             options_menu.left_right(key)
-        if key == "\n" or key == "KEY_ENTER":
-            options_menu.vis_options[options_menu.selected_option][FUNC]()
-        if key == "q":
-            sys.exit()
+        if key == ord("\n"):
+            options_menu.call("Selected")
+        if key == 12: # ^L
+            continue
+        if key == ord("b") or key ==  ord("B"):
+            options_menu.call("Bootable")
+        if key == ord("d") or key ==  ord("D"):
+            options_menu.call("Delete")
+        if key == ord("g") or key ==  ord("G"):
+            options_menu.call("Unknown")
+        if key == ord("h") or key == ord("H") or key == ord("?"):
+            options_menu.call("Help")
+        if key == ord("m") or key == ord("M"):
+            options_menu.call("Maximize")
+        if key == ord("n") or key == ord("N"):
+            options_menu.call("New")
+        if key == ord("p") or key == ord("P"):
+            options_menu.call("Print")
+        if key == ord("q") or key == ord("Q"):
+            options_menu.call("Quit")
+        if key == ord("t") or key == ord("T"):
+            options_menu.call("Type")
+        if key == ord("u") or key == ord("U"):
+            options_menu.call("Units")
+        if key == ord("W"):
+            options_menu.call("Write")
 
 def main():
     try:
