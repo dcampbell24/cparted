@@ -54,7 +54,6 @@ case letters (except for Writes).
 import curses
 import sys
 from functools import partial
-from math import ceil
 
 import parted
 
@@ -67,11 +66,11 @@ END = 1
 NAME = 0
 FUNC = 1
 
-class OptMenu:
-    """Holds the state of the options menu, provides functions for drawing it,
-    and contains the options functions"""
+class Menu:
+    """Holds the state of the options menu and partition table, provides
+    functions for drawing them, and contains the options functions."""
 
-    def __init__(self, window, partition):
+    def __init__(self, window, device):
         self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
                           ("Help", self.help_), ("Maximize", self.maximize),
                           ("Print", self.print_), ("Quit", self.quit),
@@ -81,18 +80,18 @@ class OptMenu:
                           ("Print", self.print_), ("Quit", self.quit),
                           ("Units", self.units), ("Write", self.write),
                           ("New Table", self.new_table))
-        self.partition(partition)
+        self.disk = parted.Disk(device)
+        self.partitions = get_partitions(self.disk)
+        self.select_partition(self.partitions[0])
+        self.__partition_number = 0
         self.window = window
         self.window_lines, self.window_width = window.getmaxyx()
         self.menu_line = self.window_lines - 3
         self.selected_option = 1 # Delete/New
-        self.draw_menu()
+        self.draw_options()
 
-    def __str__(self):
-        options = []
-        for opt in self.vis_options:
-            options.append(opt[NAME])
-        return "[" + "] [".join(options) + "]"
+    def str_options(self):
+        return "[" + "] [".join(zip(*self.vis_options)[NAME]) + "]"
 
     def call(self, option):
         """Attempt to call an option specified by the correspond string."""
@@ -107,7 +106,8 @@ class OptMenu:
             self.draw_info("%s is not a legal option for this partition." %
                            option)
 
-    def partition(self, part):
+    def select_partition(self, part):
+        """Change the currently selected partition."""
         self.__partition = part
         if not part_type(part).find("Free Space") == -1:
             self.vis_options = self.free_opts
@@ -115,11 +115,11 @@ class OptMenu:
             self.vis_options = self.part_opts
 
     def offset(self):
-        return int(ceil(self.window_width / 2.0) - ceil(len(str(self)) / 2.0))
+        return (self.window_width // 2) - (len(self.str_options()) // 2)
 
     def opt_coords(self):
         coords = []
-        for char, i in zip(str(self), xrange(0, len(str(self)))):
+        for char, i in zip(self.str_options(), xrange(0, len(self.str_options()))):
             if char == "[":
                 j = i
             if char == "]":
@@ -132,14 +132,39 @@ class OptMenu:
         addstr_centered(self.window, self.window_width, self.menu_line + 2,
                         string)
 
-    def draw_menu(self):
+    def draw_options(self):
         """Redraw the menu when switching partitions."""
         self.window.hline(self.menu_line, 0, " ", self.window_width)
-        self.window.addstr(self.menu_line, self.offset(), str(self))
-        self.chgat_selected(curses.A_STANDOUT)
+        self.window.addstr(self.menu_line, self.offset(), self.str_options())
+        self.chgat_option(curses.A_STANDOUT)
         self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
-    def chgat_selected(self, attr):
+    def draw_partitions(self):
+        row = PART_TABLE
+        for part in self.partitions:
+            addstr_row(self.window, self.window_width, row,
+                       nodeName(part), flags(part), part_type(part),
+                       fs_type(part), int(part.getSize('b') // 10**6))
+            row += 1
+        self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
+
+    def chgat_partition(self, attr):
+        self.window.chgat(PART_TABLE + self.__partition_number, 0, attr)
+
+    def up_down(self, key):
+        if key == curses.KEY_UP:
+            if self.__partition_number > 0:
+                self.chgat_partition(curses.A_NORMAL)
+                self.__partition_number -= 1
+                self.chgat_partition(curses.A_STANDOUT)
+        elif self.__partition_number < (len(self.partitions) - 1):
+            self.chgat_partition(curses.A_NORMAL)
+            self.__partition_number += 1
+            self.chgat_partition(curses.A_STANDOUT)
+        self.selected_option = 1 # Delete/New
+        self.select_partition(self.partitions[self.__partition_number])
+
+    def chgat_option(self, attr):
         self.window.chgat(self.menu_line,
                           self.opt_coords()[self.selected_option][START],
                           self.opt_coords()[self.selected_option][END], attr)
@@ -147,22 +172,32 @@ class OptMenu:
     def left_right(self, key):
         if key == curses.KEY_LEFT:
             if self.selected_option > 0:
-                self.chgat_selected(curses.A_NORMAL)
+                self.chgat_option(curses.A_NORMAL)
                 self.selected_option -= 1
-                self.chgat_selected(curses.A_STANDOUT)
+                self.chgat_option(curses.A_STANDOUT)
         elif self.selected_option < (len(self.vis_options) - 1):
-            self.chgat_selected(curses.A_NORMAL)
+            self.chgat_option(curses.A_NORMAL)
             self.selected_option += 1
-            self.chgat_selected(curses.A_STANDOUT)
+            self.chgat_option(curses.A_STANDOUT)
         self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
+    ###########################################################################
+    ## Option menu functions
+    ###########################################################################
     def bootable(self):
         """Toggle bootable flag of the current partition."""
         pass
 
     def delete(self):
         """Delete the current partition."""
-        pass
+        self.disk.deletePartition(self.__partition)
+        self.partitions = get_partitions(self.disk)
+        self.select_partition(self.partitions[0])
+        self.__partition_number = 0
+        self.window.move(PART_TABLE, 0)
+        self.window.clrtobot()
+        self.draw_partitions()
+        self.draw_options()
 
     def help_(self):
         """Print help screen."""
@@ -202,7 +237,13 @@ class OptMenu:
 
     def write(self):
         """Write partition table to disk (this might destroy data)."""
-        pass
+        self.draw_info("Are you sure you want to write the partition table to disk? y/N")
+        key = self.window.getkey()
+        if key == "y" or key == "Y":
+            self.disk.commit()
+            self.draw_info("Writing changes to disk...")
+        else:
+            self.draw_info("Did not write changes to disk.")
 
     def new(self):
         """Create a new partition from free space."""
@@ -212,7 +253,14 @@ class OptMenu:
         """Create a new partition table on the device (GPT, msdos)"""
         pass
 
-
+def get_partitions(disk):
+    """Return a list of all the partitions on a diski, including partitions
+    represented by free space, sorted by there starting points."""
+    partitions = disk.partitions
+    free_space = disk.getFreeSpacePartitions()
+    partitions = sorted(list(partitions) + free_space,
+                        key = lambda ps: ps.geometry.start)
+    return partitions
 
 def part_type(part):
     if part.type == 0:
@@ -239,24 +287,10 @@ def nodeName(part):
         return part.getDeviceNodeName()
     return ""
 
-
-def up_down(window, key, high_part, part_count):
-    if key == curses.KEY_UP:
-        if high_part > 0:
-            window.chgat(PART_TABLE + high_part, 0, curses.A_NORMAL)
-            high_part -= 1
-            window.chgat(PART_TABLE + high_part, 0, curses.A_STANDOUT)
-    elif high_part < (part_count - 1):
-        window.chgat(PART_TABLE + high_part, 0, curses.A_NORMAL)
-        high_part += 1
-        window.chgat(PART_TABLE + high_part, 0, curses.A_STANDOUT)
-    return high_part
-
 def addstr_centered(window, width, line, string):
     """Add a string to the center of a window."""
-    center = int(ceil(width / 2.0) - ceil(len(string) / 2.0))
-    window.addstr(line, center, string)
-    return center
+    offset = (width // 2) - (len(string) // 2)
+    window.addstr(line, offset, string)
 
 def addstr_row(window, width, line, col0, col1, col2, col3, col4):
     window.addstr(line, 0,
@@ -264,11 +298,11 @@ def addstr_row(window, width, line, col0, col1, col2, col3, col4):
                   (col0, col1, col2, col3, col4, x = width // 5,
                    y = width // 6))
 
-def start_curses(stdscr, device, disk, partitions, free_space):
+def start_curses(stdscr, device):
     curses.nl() # Allow capture of KEY_ENTER via '\n'.
-    max_yx = stdscr.getmaxyx()
-    stdscr_cntr = partial(addstr_centered, stdscr, max_yx[1])
-    stdscr_row  = partial(addstr_row, stdscr, max_yx[1])
+    stdscr_lines, stdscr_width = stdscr.getmaxyx()
+    stdscr_cntr = partial(addstr_centered, stdscr, stdscr_width)
+    stdscr_row  = partial(addstr_row, stdscr, stdscr_width)
 
     # Draw the device information.
     stdscr_cntr(0, "cparted 0.1")
@@ -277,24 +311,14 @@ def start_curses(stdscr, device, disk, partitions, free_space):
     stdscr_cntr(3, "Size: %i bytes, %.1f GB" % (bytes_, (bytes_ / (10 ** 9))))
     stdscr_cntr(4, "Cylinders: %i Heads: %i  Sectors per Track: %i" %
                     device.biosGeometry)
-    stdscr_cntr(5, "Partition Table: {:}".format(disk.type))
+    stdscr_cntr(5, "Partition Table: {:}".format(parted.Disk(device).type))
     stdscr_row(7,"Name", "Flags", "Part Type", "FS Type", "Size(MB)")
-    stdscr.hline(8, 0, "-", max_yx[1])
+    stdscr.hline(8, 0, "-", stdscr_width)
 
-    # Create the partitions menu.
-    row = PART_TABLE
-    partitions = sorted(list(partitions) + free_space,
-                        key=lambda ps: ps.geometry.start)
-    for part in partitions:
-        stdscr_row(row, nodeName(part), flags(part), part_type(part),
-                   fs_type(part), int(part.getSize('b') // 10**6))
-        row += 1
-    high_part = 0
-    stdscr.chgat(PART_TABLE, 0, curses.A_STANDOUT)
-
-    # Create the options menu.
-    options_menu = OptMenu(stdscr, partitions[0])
-    options_menu.draw_menu()
+    # Draw the partitions table and options menu
+    menu = Menu(stdscr, device)
+    menu.draw_partitions()
+    menu.draw_options()
 
     # The main loop that captures user input.
     while True:
@@ -305,45 +329,40 @@ def start_curses(stdscr, device, disk, partitions, free_space):
         if key == curses.KEY_RESIZE:
             continue
         if key == curses.KEY_DOWN or key == curses.KEY_UP:
-            high_part = up_down(stdscr, key, high_part, len(partitions))
-            options_menu.selected_option = 1 # Delete/New
-            options_menu.partition(partitions[high_part])
-            options_menu.draw_menu()
+            menu.up_down(key)
+            menu.draw_options()
         if key == curses.KEY_RIGHT or key == curses.KEY_LEFT:
-            options_menu.left_right(key)
+            menu.left_right(key)
         if key == ord("\n"):
-            options_menu.call("Selected")
+            menu.call("Selected")
         if key == 12: # ^L
             continue
         if key == ord("b") or key ==  ord("B"):
-            options_menu.call("Bootable")
+            menu.call("Bootable")
         if key == ord("d") or key ==  ord("D"):
-            options_menu.call("Delete")
+            menu.call("Delete")
         if key == ord("g") or key ==  ord("G"):
-            options_menu.call("Unknown")
+            menu.call("Unknown")
         if key == ord("h") or key == ord("H") or key == ord("?"):
-            options_menu.call("Help")
+            menu.call("Help")
         if key == ord("m") or key == ord("M"):
-            options_menu.call("Maximize")
+            menu.call("Maximize")
         if key == ord("n") or key == ord("N"):
-            options_menu.call("New")
+            menu.call("New")
         if key == ord("p") or key == ord("P"):
-            options_menu.call("Print")
+            menu.call("Print")
         if key == ord("q") or key == ord("Q"):
-            options_menu.call("Quit")
+            menu.call("Quit")
         if key == ord("t") or key == ord("T"):
-            options_menu.call("Type")
+            menu.call("Type")
         if key == ord("u") or key == ord("U"):
-            options_menu.call("Units")
+            menu.call("Units")
         if key == ord("W"):
-            options_menu.call("Write")
+            menu.call("Write")
 
 def main():
     try:
         device = parted.Device(sys.argv[1])
-        disk = parted.Disk(device)
-        partitions = disk.partitions
-        free_space = disk.getFreeSpacePartitions()
     except IndexError:
         sys.stderr.write("ERROR: you must enter a device path\n")
         sys.exit(1)
@@ -351,5 +370,5 @@ def main():
         sys.stderr.write("ERROR: %s\n" % e)
         sys.exit(1)
     else:
-        curses.wrapper(start_curses, device, disk, partitions, free_space)
+        curses.wrapper(start_curses, device)
 main()
