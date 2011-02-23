@@ -152,13 +152,12 @@ class Menu:
         self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
     def draw_partitions(self):
-        self.window.move(PART_TABLE, 0)
         s = ""
         for part in self.partitions:
             s += format_fields(self.window_width, (nodeName(part), flags(part),
                                part_type(part), fs_type(part),
                                int(part.getSize('b') / 10**6))) + "\n"
-        self.window.addstr(s)
+        self.window.addstr(PART_TABLE, 0, s)
         self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
 
     def chgat_partition(self, attr):
@@ -222,7 +221,7 @@ class Menu:
             s = reduce(lambda x, y: x + y, lines[:self.window_lines - 3])
             del lines[:self.window_lines - 3]
             help_win.erase()
-            help_win.addstr(0, 0, s)
+            help_win.insstr(0, 0, s)
             addstr_centered(help_win, self.window_width, self.window_lines - 1,
                             "Press a key to continue.")
             help_win.getch()
@@ -347,10 +346,9 @@ def start_curses(stdscr, device):
         key = stdscr.getch()
         if key == -1: # no input
             continue
-        if key == curses.KEY_RESIZE:
+        if key == curses.KEY_RESIZE or key == 12: #^L
             stdscr.erase()
-            stdscr.move(0, 0)
-            stdscr.addstr(header(device, stdscr.getmaxyx()[1]))
+            stdscr.addstr(0, 0, header(device, stdscr.getmaxyx()[1]))
             menu.draw_partitions()
             menu.draw_options()
         if key == curses.KEY_DOWN or key == curses.KEY_UP:
@@ -360,12 +358,6 @@ def start_curses(stdscr, device):
             menu.left_right(key)
         if key == ord("\n"):
             menu.call("Selected")
-        if key == 12: # ^L
-            stdscr.erase()
-            stdscr.move(0, 0)
-            stdscr.addstr(header(device, stdscr.getmaxyx()[1]))
-            menu.draw_partitions()
-            menu.draw_options()
         if key == ord("b") or key ==  ord("B"):
             menu.call("Bootable")
         if key == ord("d") or key ==  ord("D"):
