@@ -53,12 +53,14 @@ case letters (except for Writes).
 
 import curses
 import sys
-from functools import partial
 
 import parted
 
-PART_TABLE = 9 # Where to start listing partitions from.
+PART_TABLE = 10 # Where to start listing partitions from.
 PART_TYPES = ("Logical", "Extended", "Free Space", "Metadata", "Protected")
+DEVICE_TYPES = ("Unknown", "SCSI", "IDE", "DAC960", "CPQ Array", "File",
+                "ATA RAID", "I2O", "UBD", "DASD", "VIODASD", "SX8", "DM",
+                "XVD", "SDMMC", "Virtual Block")
 
 START = 0
 END = 1
@@ -85,10 +87,20 @@ class Menu:
         self.select_partition(self.partitions[0])
         self.__partition_number = 0
         self.window = window
-        self.window_lines, self.window_width = window.getmaxyx()
-        self.menu_line = self.window_lines - 3
         self.selected_option = 1 # Delete/New
         self.draw_options()
+
+    @property
+    def window_lines(self):
+        return self.window.getmaxyx()[0]
+
+    @property
+    def window_width(self):
+        return self.window.getmaxyx()[1]
+
+    @property
+    def menu_line(self):
+        return self.window_lines - 3
 
     def str_options(self):
         return "[" + "] [".join(zip(*self.vis_options)[NAME]) + "]"
@@ -140,12 +152,13 @@ class Menu:
         self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
     def draw_partitions(self):
-        row = PART_TABLE
+        self.window.move(PART_TABLE, 0)
+        s = ""
         for part in self.partitions:
-            addstr_row(self.window, self.window_width, row,
-                       nodeName(part), flags(part), part_type(part),
-                       fs_type(part), int(part.getSize('b') // 10**6))
-            row += 1
+            s += format_fields(self.window_width, (nodeName(part), flags(part),
+                               part_type(part), fs_type(part),
+                               int(part.getSize('b') / 10**6))) + "\n"
+        self.window.addstr(s)
         self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
 
     def chgat_partition(self, attr):
@@ -240,8 +253,8 @@ class Menu:
         self.draw_info("Are you sure you want to write the partition table to disk? y/N")
         key = self.window.getkey()
         if key == "y" or key == "Y":
-            self.disk.commit()
             self.draw_info("Writing changes to disk...")
+            self.disk.commit()
         else:
             self.draw_info("Did not write changes to disk.")
 
@@ -292,30 +305,39 @@ def addstr_centered(window, width, line, string):
     offset = (width // 2) - (len(string) // 2)
     window.addstr(line, offset, string)
 
-def addstr_row(window, width, line, col0, col1, col2, col3, col4):
-    window.addstr(line, 0,
-                  ("{:<{x}} {:{x}} {:{x}}{:{x}} {:>{y}}").format\
-                  (col0, col1, col2, col3, col4, x = width // 5,
-                   y = width // 6))
+def format_fields(window_width, cols):
+    fields = ("{:{a}} {:{a}} {:{a}} {:{a}} {:>{a}}").\
+              format(*cols, a = int(window_width / 5.5))
+    return "{:^{:}}".format(fields, window_width - 1)
+
+def header(device, window_width):
+    text=\
+    """\
+    cparted 0.1
+
+    Disk Drive: {:}
+    Model: {:} ({:})
+    Size: {:} sectors, {:.1f} GB
+    Sector Size (logical/physical): {:}B/{:}B
+    Partition Table: {:}
+    """.format(device.path, device.model, DEVICE_TYPES[device.type],
+               device.length, device.getSize('b') / (10 ** 9),
+               device.sectorSize, device.physicalSectorSize,
+               parted.Disk(device).type)
+    ret = ""
+    for line in text.splitlines():
+        ret += "{:^{:}}".format(line, window_width)
+    ret += format_fields(window_width, ("Name", "Flags", "Part Type",
+                                        "FS Type", "Size(MB)")) + "\n"
+    ret += "-" * window_width + "\n"
+    return ret
 
 def start_curses(stdscr, device):
-    curses.nl() # Allow capture of KEY_ENTER via '\n'.
-    stdscr_lines, stdscr_width = stdscr.getmaxyx()
-    stdscr_cntr = partial(addstr_centered, stdscr, stdscr_width)
-    stdscr_row  = partial(addstr_row, stdscr, stdscr_width)
+    # Allow capture of KEY_ENTER via '\n'.
+    curses.nl()
 
-    # Draw the device information.
-    stdscr_cntr(0, "cparted 0.1")
-    stdscr_cntr(2, "Disk Drive: %s (%s)" % (device.path, device.model))
-    bytes_ = device.getSize('b')
-    stdscr_cntr(3, "Size: %i bytes, %.1f GB" % (bytes_, (bytes_ / (10 ** 9))))
-    stdscr_cntr(4, "Cylinders: %i Heads: %i  Sectors per Track: %i" %
-                    device.biosGeometry)
-    stdscr_cntr(5, "Partition Table: {:}".format(parted.Disk(device).type))
-    stdscr_row(7,"Name", "Flags", "Part Type", "FS Type", "Size(MB)")
-    stdscr.hline(8, 0, "-", stdscr_width)
-
-    # Draw the partitions table and options menu
+    # Draw the header, partitions table, and options menu
+    stdscr.addstr(header(device, stdscr.getmaxyx()[1]))
     menu = Menu(stdscr, device)
     menu.draw_partitions()
     menu.draw_options()
@@ -323,11 +345,14 @@ def start_curses(stdscr, device):
     # The main loop that captures user input.
     while True:
         key = stdscr.getch()
-        #    stdscr_cntr(16, str(key))
         if key == -1: # no input
             continue
         if key == curses.KEY_RESIZE:
-            continue
+            stdscr.erase()
+            stdscr.move(0, 0)
+            stdscr.addstr(header(device, stdscr.getmaxyx()[1]))
+            menu.draw_partitions()
+            menu.draw_options()
         if key == curses.KEY_DOWN or key == curses.KEY_UP:
             menu.up_down(key)
             menu.draw_options()
@@ -336,7 +361,11 @@ def start_curses(stdscr, device):
         if key == ord("\n"):
             menu.call("Selected")
         if key == 12: # ^L
-            continue
+            stdscr.erase()
+            stdscr.move(0, 0)
+            stdscr.addstr(header(device, stdscr.getmaxyx()[1]))
+            menu.draw_partitions()
+            menu.draw_options()
         if key == ord("b") or key ==  ord("B"):
             menu.call("Bootable")
         if key == ord("d") or key ==  ord("D"):
