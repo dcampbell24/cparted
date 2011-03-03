@@ -68,7 +68,7 @@ END = 1
 NAME = 0
 FUNC = 1
 
-class Menu:
+class Menu(object):
     """Holds the state of the options menu and partition table, provides
     functions for drawing them, and contains the options functions."""
 
@@ -84,11 +84,8 @@ class Menu:
                           ("New Table", self.new_table))
         self.disk = parted.Disk(device)
         self.partitions = get_partitions(self.disk)
-        self.select_partition(self.partitions[0])
-        self.__partition_number = 0
+        self.select_partition(0)
         self.window = window
-        self.selected_option = 1 # Delete/New
-        self.draw_options()
 
     @property
     def window_lines(self):
@@ -120,8 +117,10 @@ class Menu:
 
     def select_partition(self, part):
         """Change the currently selected partition."""
-        self.__partition = part
-        if not part_type(part).find("Free Space") == -1:
+        self.__partition_number = part
+        self.__partition = self.partitions[part]
+        self.selected_option = 1 # Delete/New
+        if self.__partition.type & parted.PARTITION_FREESPACE:
             self.vis_options = self.free_opts
         else:
             self.vis_options = self.part_opts
@@ -167,14 +166,12 @@ class Menu:
         if key == curses.KEY_UP:
             if self.__partition_number > 0:
                 self.chgat_partition(curses.A_NORMAL)
-                self.__partition_number -= 1
+                self.select_partition(self.__partition_number - 1)
                 self.chgat_partition(curses.A_STANDOUT)
         elif self.__partition_number < (len(self.partitions) - 1):
             self.chgat_partition(curses.A_NORMAL)
-            self.__partition_number += 1
+            self.select_partition(self.__partition_number + 1)
             self.chgat_partition(curses.A_STANDOUT)
-        self.selected_option = 1 # Delete/New
-        self.select_partition(self.partitions[self.__partition_number])
 
     def chgat_option(self, attr):
         self.window.chgat(self.menu_line,
@@ -202,10 +199,12 @@ class Menu:
 
     def delete(self):
         """Delete the current partition."""
+        logical = self.__partition.type & parted.PARTITION_LOGICAL
         self.disk.deletePartition(self.__partition)
+        if logical:
+            self.disk.minimizeExtendedPartition()
         self.partitions = get_partitions(self.disk)
-        self.select_partition(self.partitions[0])
-        self.__partition_number = 0
+        self.select_partition(0)
         self.window.move(PART_TABLE, 0)
         self.window.clrtobot()
         self.draw_partitions()
@@ -259,6 +258,9 @@ class Menu:
 
     def new(self):
         """Create a new partition from free space."""
+        # Menu: [Primary] [Logical] [Cancel] (if there is a choice)
+        # Size: (defaults to max allowable aligned size)
+        # Menu: [Beginning] [End] (if smaller than max size)
         pass
 
     def new_table(self):
@@ -275,7 +277,9 @@ def get_partitions(disk):
     return partitions
 
 def part_type(part):
-    if part.type == 0:
+    if part.type & parted.PARTITION_FREESPACE:
+        return check_free_space(part)
+    elif part.type == 0:
         return "Primary"
     flags = []
     for flag, value in zip(bin(part.type)[::-1], PART_TYPES):
@@ -284,9 +288,11 @@ def part_type(part):
     return ", ".join(flags)
 
 def fs_type(part):
-    try:
+    if part.fileSystem:
         return part.fileSystem.type
-    except AttributeError:
+    elif part.type & parted.PARTITION_FREESPACE:
+        return "Free Space"
+    else:
         return ""
 
 def flags(part):
@@ -298,6 +304,42 @@ def nodeName(part):
     if part.active:
         return part.getDeviceNodeName()
     return ""
+
+def check_free_space(part):
+    """Check to see what the region of free space can be used for."""
+    disk = part.disk
+    if len(disk.partitions) == disk.maxSupportedPartitionCount:
+        return "Unusable" # Too many partitions
+    if disk.primaryPartitionCount == disk.maxPrimaryPartitionCount:
+        if (len(disk.getLogicalPartitions()) == disk.getMaxLogicalPartitions):
+            return "Unusable" # Too many logical partitions or no extended.
+        elif next_to_extended(part):
+            return "Logical"
+        else:
+            return "Unusable"
+    elif not disk.getExtendedPartition():
+        return "Pri/Log" # If logical, create an extended partition.
+    elif next_to_extended(part):
+        return "Pri/Log"
+    else:
+        return "Primary"
+
+def next_to_extended(part):
+    """True if next to or inside of the extended partition"""
+    parts = get_partitions(part.disk)
+    for p, i in zip(parts, range(len(parts))):
+        if p.type & parted.PARTITION_EXTENDED:
+            index = i
+    if parts[index - 1] == part:
+        return True
+    x = 1
+    if parts[index + x] == part:
+        return True
+    while parts[index + x].type & parted.PARTITION_LOGICAL:
+        x += 1
+        if parts[index + x] == part:
+            return True
+    return False
 
 def addstr_centered(window, width, line, string):
     """Add a string to the center of a window."""
@@ -392,4 +434,6 @@ def main():
         sys.exit(1)
     else:
         curses.wrapper(start_curses, device)
-main()
+
+if __name__ == "__main__":
+    main()
