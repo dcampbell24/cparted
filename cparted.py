@@ -101,7 +101,23 @@ class Menu(object):
     def menu_line(self):
         return self.window_lines - 3
 
-    def str_options(self):
+    @property
+    def offset(self):
+        return (self.window_width // 2) - (len(self.options_string) // 2)
+
+    @property
+    def opt_coords(self):
+        coords = []
+        for char, i in zip(self.options_string,
+                           range(0, len(self.options_string))):
+            if char == "[":
+                j = i
+            if char == "]":
+                coords.append((j + self.offset, i - j + 1))
+        return coords
+
+    @property
+    def options_string(self):
         return "[" + "] [".join(zip(*self.vis_options)[NAME]) + "]"
 
     def call(self, option):
@@ -127,18 +143,6 @@ class Menu(object):
         else:
             self.vis_options = self.part_opts
 
-    def offset(self):
-        return (self.window_width // 2) - (len(self.str_options()) // 2)
-
-    def opt_coords(self):
-        coords = []
-        for char, i in zip(self.str_options(), xrange(0, len(self.str_options()))):
-            if char == "[":
-                j = i
-            if char == "]":
-                coords.append((j + self.offset(), i - j + 1))
-        return coords
-
     def draw_info(self, string):
         """Add information line to the bottom of the main window"""
         self.window.hline(self.menu_line + 2, 0, " ", self.window_width)
@@ -148,7 +152,7 @@ class Menu(object):
     def draw_options(self):
         """Redraw the menu when switching partitions."""
         self.window.hline(self.menu_line, 0, " ", self.window_width)
-        self.window.addstr(self.menu_line, self.offset(), self.str_options())
+        self.window.addstr(self.menu_line, self.offset, self.options_string)
         self.chgat_option(curses.A_STANDOUT)
         self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
 
@@ -177,8 +181,8 @@ class Menu(object):
 
     def chgat_option(self, attr):
         self.window.chgat(self.menu_line,
-                          self.opt_coords()[self.selected_option][START],
-                          self.opt_coords()[self.selected_option][END], attr)
+                          self.opt_coords[self.selected_option][START],
+                          self.opt_coords[self.selected_option][END], attr)
 
     def left_right(self, key):
         if key == curses.KEY_LEFT:
