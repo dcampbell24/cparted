@@ -159,9 +159,11 @@ class Menu(object):
     def draw_partitions(self):
         s = ""
         for part in self.partitions:
-            s += format_fields(self.window_width, (nodeName(part), flags(part),
-                               part_type(part), fs_type(part),
-                               int(part.getSize('b') / 10**6))) + "\n"
+            s += format_fields(self.window_width,
+                               (if_active(part, part.getDeviceNodeName),
+                                if_active(part, part.getFlagsAsString),
+                                part_type(part), fs_type(part),
+                                int(part.getSize('b') / 10**6))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
         self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
 
@@ -274,7 +276,7 @@ class Menu(object):
         pass
 
 def get_partitions(disk):
-    """Return a list of all the partitions on a diski, including partitions
+    """Return a list of all the partitions on a disk, including partitions
     represented by free space, sorted by there starting points."""
     partitions = disk.partitions
     free_space = disk.getFreeSpacePartitions()
@@ -301,14 +303,9 @@ def fs_type(part):
     else:
         return ""
 
-def flags(part):
+def if_active(part, fn):
     if part.active:
-        return part.getFlagsAsString()
-    return ""
-
-def nodeName(part):
-    if part.active:
-        return part.getDeviceNodeName()
+        return fn()
     return ""
 
 def check_free_space(part):
