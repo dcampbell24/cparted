@@ -6,6 +6,13 @@ This program is licensed under the GPL. See COPYING for the full license.
 This program is a curses front end to pyparted that mimics cfdisk.
 """
 
+import curses
+import sys
+
+import parted
+
+__version__ = ""
+
 help__=\
 """
 Help Screen for cparted
@@ -50,11 +57,6 @@ CTRL-L       Redraws the screen
 Note: All of the commands can be entered with either upper or lower
 case letters (except for Writes).
 """
-
-import curses
-import sys
-
-import parted
 
 PART_TABLE = 10 # Where to start listing partitions from.
 PART_TYPES = ("Logical", "Extended", "Free Space", "Metadata", "Protected")
@@ -354,17 +356,17 @@ def format_fields(window_width, cols):
 def header(device, window_width):
     text=\
     """\
-    cparted 0.1
+    cparted {:}
 
     Disk Drive: {:}
     Model: {:} ({:})
     Size: {:} sectors, {:.1f} GB
     Sector Size (logical/physical): {:}B/{:}B
     Partition Table: {:}
-    """.format(device.path, device.model, DEVICE_TYPES[device.type],
-               device.length, device.getSize('b') / (10 ** 9),
-               device.sectorSize, device.physicalSectorSize,
-               parted.Disk(device).type)
+    """.format(__version__, device.path, device.model,
+               DEVICE_TYPES[device.type], device.length,
+               device.getSize('b') / (10 ** 9), device.sectorSize,
+               device.physicalSectorSize, parted.Disk(device).type)
     ret = ""
     for line in text.splitlines():
         ret += "{:^{:}}".format(line, window_width)
