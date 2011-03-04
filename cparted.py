@@ -160,8 +160,8 @@ class Menu(object):
         s = ""
         for part in self.partitions:
             s += format_fields(self.window_width,
-                               (if_active(part, part.getDeviceNodeName),
-                                if_active(part, part.getFlagsAsString),
+                               (part.getDeviceNodeName(),
+                                part.getFlagsAsString(),
                                 part_type(part), fs_type(part),
                                 int(part.getSize('b') / 10**6))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
@@ -302,11 +302,6 @@ def fs_type(part):
         return "Free Space"
     else:
         return ""
-
-def if_active(part, fn):
-    if part.active:
-        return fn()
-    return ""
 
 def check_free_space(part):
     """Check to see what the region of free space can be used for."""
