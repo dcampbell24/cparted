@@ -85,7 +85,7 @@ class Menu(object):
                           ("Units", self.units), ("Write", self.write),
                           ("New Table", self.new_table))
         self.disk = parted.Disk(device)
-        self.partitions = get_partitions(self.disk)
+        self.partitions = self.disk.getAllPartitions()
         self.select_partition(0)
         self.window = window
 
@@ -211,7 +211,7 @@ class Menu(object):
         self.disk.deletePartition(self.__partition)
         if logical:
             self.disk.minimizeExtendedPartition()
-        self.partitions = get_partitions(self.disk)
+        self.partitions = self.disk.getAllPartitions()
         self.select_partition(0)
         self.window.move(PART_TABLE, 0)
         self.window.clrtobot()
@@ -275,19 +275,10 @@ class Menu(object):
         """Create a new partition table on the device (GPT, msdos)"""
         pass
 
-def get_partitions(disk):
-    """Return a list of all the partitions on a disk, including partitions
-    represented by free space, sorted by there starting points."""
-    partitions = disk.partitions
-    free_space = disk.getFreeSpacePartitions()
-    partitions = sorted(list(partitions) + free_space,
-                        key = lambda ps: ps.geometry.start)
-    return partitions
-
 def part_type(part):
     if part.type & parted.PARTITION_FREESPACE:
         return check_free_space(part)
-    elif part.type == 0:
+    elif part.type == parted.PARTITION_NORMAL:
         return "Primary"
     flags = []
     for flag, value in zip(bin(part.type)[::-1], PART_TYPES):
@@ -324,7 +315,7 @@ def check_free_space(part):
 
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
-    parts = get_partitions(part.disk)
+    parts = part.disk.getAllPartitions()
     for p, i in zip(parts, range(len(parts))):
         if p.type & parted.PARTITION_EXTENDED:
             index = i
