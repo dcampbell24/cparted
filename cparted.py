@@ -85,10 +85,35 @@ class Menu(object):
                           ("Print", self.print_), ("Quit", self.quit),
                           ("Units", self.units), ("Write", self.write),
                           ("New Table", self.new_table))
+        self.device = device
         self.disk = parted.Disk(device)
         self.partitions = self.disk.allPartitions
         self.select_partition(0)
         self.window = window
+
+    @property
+    def header(self):
+        text=\
+        """\
+        cparted {:}
+
+        Disk Drive: {:}
+        Model: {:} ({:})
+        Size: {:} sectors, {:.1f} GB
+        Sector Size (logical/physical): {:}B/{:}B
+        Partition Table: {:}
+        """.format(__version__, self.device.path, self.device.model,
+                   DEVICE_TYPES[self.device.type], self.device.length,
+                   self.device.getSize('b') / (10 ** 9),
+                   self.device.sectorSize, self.device.physicalSectorSize,
+                   self.disk.type)
+        ret = ""
+        for line in text.splitlines():
+            ret += "{:^{:}}".format(line, self.window_width)
+        ret += self.format_fields(("Name", "Flags", "Part Type", "FS Type",
+                                   "Size(MB)")) + "\n"
+        ret += "-" * self.window_width + "\n"
+        return ret
 
     @property
     def window_lines(self):
@@ -102,28 +127,30 @@ class Menu(object):
     def menu_line(self):
         return self.window_lines - 3
 
+    def center(self, string):
+        return (self.window_width // 2) - (len(string) // 2)
+
     @property
-    def offset(self):
-        return (self.window_width // 2) - (len(self.options_string) // 2)
+    def opts_offset(self):
+        return self.center(self.opts_string)
 
     @property
     def opt_coords(self):
         coords = []
-        for char, i in zip(self.options_string,
-                           range(0, len(self.options_string))):
+        for char, i in zip(self.opts_string, range(0, len(self.opts_string))):
             if char == "[":
                 j = i
             if char == "]":
-                coords.append((j + self.offset, i - j + 1))
+                coords.append((j + self.opts_offset, i - j + 1))
         return coords
 
     @property
-    def options_string(self):
-        return "[" + "] [".join(zip(*self.vis_options)[NAME]) + "]"
+    def opts_string(self):
+        return "[" + "] [".join(zip(*self.vis_opts)[NAME]) + "]"
 
     def call(self, option):
         """Attempt to call an option specified by the correspond string."""
-        names, funcs = zip(*self.vis_options)
+        names, funcs = zip(*self.vis_opts)
         if option == "Selected":
             funcs[self.selected_option]()
             return
@@ -140,31 +167,37 @@ class Menu(object):
         self.__partition = self.partitions[part]
         self.selected_option = 1 # Delete/New
         if self.__partition.type & parted.PARTITION_FREESPACE:
-            self.vis_options = self.free_opts
+            self.vis_opts = self.free_opts
         else:
-            self.vis_options = self.part_opts
+            self.vis_opts = self.part_opts
+
+    def draw_header(self):
+        self.window.addstr(0, 0, self.header)
 
     def draw_info(self, string):
         """Add information line to the bottom of the main window"""
         self.window.hline(self.menu_line + 2, 0, " ", self.window_width)
-        addstr_centered(self.window, self.window_width, self.menu_line + 2,
-                        string)
+        self.window.addstr(self.menu_line + 2, self.center(string), string)
 
     def draw_options(self):
         """Redraw the menu when switching partitions."""
         self.window.hline(self.menu_line, 0, " ", self.window_width)
-        self.window.addstr(self.menu_line, self.offset, self.options_string)
+        self.window.addstr(self.menu_line, self.opts_offset, self.opts_string)
         self.chgat_option(curses.A_STANDOUT)
-        self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
+        self.draw_info(self.vis_opts[self.selected_option][FUNC].__doc__)
+
+    def format_fields(self, cols):
+        fields = ("{:{a}} {:{a}} {:{a}} {:{a}} {:>{a}}").\
+                  format(*cols, a = int(self.window_width / 5.5))
+        return "{:^{:}}".format(fields, self.window_width - 1)
 
     def draw_partitions(self):
         s = ""
         for part in self.partitions:
-            s += format_fields(self.window_width,
-                               (part.getDeviceNodeName(),
-                                part.getFlagsAsString(),
-                                part_type(part), fs_type(part),
-                                int(part.getSize('b') / 10**6))) + "\n"
+            s += self.format_fields((part.getDeviceNodeName(),
+                                     part.getFlagsAsString(),
+                                     part_type(part), fs_type(part),
+                                     int(part.getSize('b') / 10**6))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
         self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
 
@@ -193,11 +226,11 @@ class Menu(object):
                 self.chgat_option(curses.A_NORMAL)
                 self.selected_option -= 1
                 self.chgat_option(curses.A_STANDOUT)
-        elif self.selected_option < (len(self.vis_options) - 1):
+        elif self.selected_option < (len(self.vis_opts) - 1):
             self.chgat_option(curses.A_NORMAL)
             self.selected_option += 1
             self.chgat_option(curses.A_STANDOUT)
-        self.draw_info(self.vis_options[self.selected_option][FUNC].__doc__)
+        self.draw_info(self.vis_opts[self.selected_option][FUNC].__doc__)
 
     ###########################################################################
     ## Option menu functions
@@ -223,6 +256,7 @@ class Menu(object):
         """Print help screen."""
         help_win = curses.newwin(0, 0)
         help_win.overlay(self.window)
+        info = "Press a key to continue."
 
         lines = help__.splitlines(True)
         while len(lines) > 0:
@@ -230,8 +264,7 @@ class Menu(object):
             del lines[:self.window_lines - 3]
             help_win.erase()
             help_win.insstr(0, 0, s)
-            addstr_centered(help_win, self.window_width, self.window_lines - 1,
-                            "Press a key to continue.")
+            help_win.addstr(self.window_lines - 1, self.center(info), info)
             help_win.getch()
         self.window.redrawwin()
 
@@ -331,45 +364,14 @@ def next_to_extended(part):
             return True
     return False
 
-def addstr_centered(window, width, line, string):
-    """Add a string to the center of a window."""
-    offset = (width // 2) - (len(string) // 2)
-    window.addstr(line, offset, string)
-
-def format_fields(window_width, cols):
-    fields = ("{:{a}} {:{a}} {:{a}} {:{a}} {:>{a}}").\
-              format(*cols, a = int(window_width / 5.5))
-    return "{:^{:}}".format(fields, window_width - 1)
-
-def header(device, window_width):
-    text=\
-    """\
-    cparted {:}
-
-    Disk Drive: {:}
-    Model: {:} ({:})
-    Size: {:} sectors, {:.1f} GB
-    Sector Size (logical/physical): {:}B/{:}B
-    Partition Table: {:}
-    """.format(__version__, device.path, device.model,
-               DEVICE_TYPES[device.type], device.length,
-               device.getSize('b') / (10 ** 9), device.sectorSize,
-               device.physicalSectorSize, parted.Disk(device).type)
-    ret = ""
-    for line in text.splitlines():
-        ret += "{:^{:}}".format(line, window_width)
-    ret += format_fields(window_width, ("Name", "Flags", "Part Type",
-                                        "FS Type", "Size(MB)")) + "\n"
-    ret += "-" * window_width + "\n"
-    return ret
 
 def start_curses(stdscr, device):
     # Allow capture of KEY_ENTER via '\n'.
     curses.nl()
 
     # Draw the header, partitions table, and options menu
-    stdscr.addstr(header(device, stdscr.getmaxyx()[1]))
     menu = Menu(stdscr, device)
+    menu.draw_header()
     menu.draw_partitions()
     menu.draw_options()
 
@@ -380,7 +382,7 @@ def start_curses(stdscr, device):
             continue
         if key == curses.KEY_RESIZE or key == 12: #^L
             stdscr.erase()
-            stdscr.addstr(0, 0, header(device, stdscr.getmaxyx()[1]))
+            menu.draw_header()
             menu.draw_partitions()
             menu.draw_options()
         if key == curses.KEY_DOWN or key == curses.KEY_UP:
