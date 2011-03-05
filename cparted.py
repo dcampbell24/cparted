@@ -8,6 +8,7 @@ This program is a curses front end to pyparted that mimics cfdisk.
 
 import curses
 import sys
+from functools import reduce
 
 import parted
 
@@ -418,7 +419,7 @@ def main():
     except IndexError:
         sys.stderr.write("ERROR: you must enter a device path\n")
         sys.exit(1)
-    except Exception, e:
+    except Exception as e:
         sys.stderr.write("ERROR: %s\n" % e)
         sys.exit(1)
     else:
