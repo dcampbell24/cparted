@@ -171,6 +171,11 @@ class Menu(object):
         else:
             self.vis_opts = self.part_opts
 
+    def draw_menu(self):
+        self.draw_header()
+        self.draw_partitions()
+        self.draw_options()
+
     def draw_header(self):
         self.window.addstr(0, 0, self.header)
 
@@ -214,6 +219,7 @@ class Menu(object):
             self.chgat_partition(curses.A_NORMAL)
             self.select_partition(self.__partition_number + 1)
             self.chgat_partition(curses.A_STANDOUT)
+        self.draw_options()
 
     def chgat_option(self, attr):
         self.window.chgat(self.menu_line,
@@ -371,9 +377,7 @@ def start_curses(stdscr, device):
 
     # Draw the header, partitions table, and options menu
     menu = Menu(stdscr, device)
-    menu.draw_header()
-    menu.draw_partitions()
-    menu.draw_options()
+    menu.draw_menu()
 
     # The main loop that captures user input.
     while True:
@@ -382,12 +386,9 @@ def start_curses(stdscr, device):
             continue
         if key == curses.KEY_RESIZE or key == 12: #^L
             stdscr.erase()
-            menu.draw_header()
-            menu.draw_partitions()
-            menu.draw_options()
+            menu.draw_menu()
         if key == curses.KEY_DOWN or key == curses.KEY_UP:
             menu.up_down(key)
-            menu.draw_options()
         if key == curses.KEY_RIGHT or key == curses.KEY_LEFT:
             menu.left_right(key)
         if key == ord("\n"):
