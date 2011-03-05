@@ -85,7 +85,7 @@ class Menu(object):
                           ("Units", self.units), ("Write", self.write),
                           ("New Table", self.new_table))
         self.disk = parted.Disk(device)
-        self.partitions = self.disk.getAllPartitions()
+        self.partitions = self.disk.allPartitions
         self.select_partition(0)
         self.window = window
 
@@ -211,7 +211,7 @@ class Menu(object):
         self.disk.deletePartition(self.__partition)
         if logical:
             self.disk.minimizeExtendedPartition()
-        self.partitions = self.disk.getAllPartitions()
+        self.partitions = self.disk.allPartitions
         self.select_partition(0)
         self.window.move(PART_TABLE, 0)
         self.window.clrtobot()
@@ -315,7 +315,7 @@ def check_free_space(part):
 
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
-    parts = part.disk.getAllPartitions()
+    parts = part.disk.allPartitions
     for p, i in zip(parts, range(len(parts))):
         if p.type & parted.PARTITION_EXTENDED:
             index = i
