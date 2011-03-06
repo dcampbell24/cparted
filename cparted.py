@@ -87,7 +87,7 @@ class Menu(object):
                           ("New Table", self.new_table))
         self.device = device
         self.disk = parted.Disk(device)
-        self.partitions = self.disk.allPartitions
+        self.partitions = minus_ext(self.disk.allPartitions)
         self.select_partition(0)
         self.window = window
 
@@ -104,7 +104,7 @@ class Menu(object):
         Partition Table: {:}
         """.format(__version__, self.device.path, self.device.model,
                    DEVICE_TYPES[self.device.type], self.device.length,
-                   self.device.getSize('b') / (10 ** 9),
+                   self.device.getSize('b') / (10**9),
                    self.device.sectorSize, self.device.physicalSectorSize,
                    self.disk.type)
         ret = ""
@@ -152,11 +152,10 @@ class Menu(object):
         """Attempt to call an option specified by the correspond string."""
         names, funcs = zip(*self.vis_opts)
         if option == "Selected":
-            funcs[self.selected_option]()
-            return
+            return funcs[self.selected_option]()
         try:
             i = names.index(option)
-            funcs[i]()
+            return funcs[i]()
         except ValueError:
             self.draw_info("%s is not a legal option for this partition." %
                            option)
@@ -173,6 +172,20 @@ class Menu(object):
 
     def draw_menu(self):
         self.draw_header()
+        self.draw_partitions()
+        self.draw_options()
+
+    def refresh_menu(self):
+        self.partitions = minus_ext(self.disk.allPartitions)
+
+        if self.__partition_number >= len(self.partitions):
+            self.chgat_partition(curses.A_NORMAL)
+            self.select_partition(len(self.partitions) - 1)
+        else:
+            self.select_partition(self.__partition_number)
+
+        self.window.move(PART_TABLE, 0)
+        self.window.clrtobot()
         self.draw_partitions()
         self.draw_options()
 
@@ -238,6 +251,23 @@ class Menu(object):
             self.chgat_option(curses.A_STANDOUT)
         self.draw_info(self.vis_opts[self.selected_option][FUNC].__doc__)
 
+    def sub_menu(self, opts):
+        """Create a sub-menu, with limited input options, that captures the
+           return value of the selected option."""
+        self.vis_opts = opts + (("Cancel", self.__cancel),)
+        self.draw_options()
+        while True:
+            key = self.window.getch()
+            if key == -1: # no input
+                continue
+            if key == curses.KEY_RESIZE or key == 12: #^L
+                self.window.erase()
+                self.draw_menu()
+            if key == curses.KEY_RIGHT or key == curses.KEY_LEFT:
+                self.left_right(key)
+            if key == ord("\n"):
+                return self.call("Selected")
+
     ###########################################################################
     ## Option menu functions
     ###########################################################################
@@ -251,12 +281,7 @@ class Menu(object):
         self.disk.deletePartition(self.__partition)
         if logical:
             self.disk.minimizeExtendedPartition()
-        self.partitions = self.disk.allPartitions
-        self.select_partition(0)
-        self.window.move(PART_TABLE, 0)
-        self.window.clrtobot()
-        self.draw_partitions()
-        self.draw_options()
+        self.refresh_menu()
 
     def help_(self):
         """Print help screen."""
@@ -306,14 +331,89 @@ class Menu(object):
 
     def new(self):
         """Create a new partition from free space."""
-        # Menu: [Primary] [Logical] [Cancel] (if there is a choice)
         # Size: (defaults to max allowable aligned size)
         # Menu: [Beginning] [End] (if smaller than max size)
+        opts1 = (("Primary", self.create_primary),
+                 ("Logical", self.create_logical))
+        opts2 = (("Beginning", self.__beginning), ("End", self.__end))
+
+        part_type = check_free_space(self.__partition)
+        if part_type == "Pri/Log":
+            part_type = self.sub_menu(opts1)
+        elif part_type == "Primary":
+            part_type = parted.PARTITION_NORMAL
+        else:
+            part_type = parted.PARTITION_LOGICAL
+
+        alignment = self.device.optimumAlignment
+        free = self.__partition.geometry
+        start = free.start
+        end = free.end
+
+        # Make room for a logical partition's metadata.
+        if part_type == parted.PARTITION_LOGICAL:
+            start += alignment.grainSize
+            # Get the extended partition. If there is not one make a new one
+            # in the free space. Then, grow the extended partition to its max
+            # geometry. Then, add the logical partition. Last, shrink the
+            # extended partition.
+
+        try:
+            if not alignment.isAligned(free, start):
+                start = alignment.alignDown(free, start)
+            if not alignment.isAligned(free, end):
+                end = alignment.alignUp(free, end)
+
+            free = parted.Geometry(self.device, start, end = end)
+            max_length = self.disk.maxPartitionLength
+
+            if max_length and max_length < free.length:
+                self.draw_info("ERROR: partition size too large")
+                return
+
+            part = parted.Partition(self.disk, part_type, geometry = free)
+            constraint = parted.Constraint(exactGeom = free)
+            self.disk.addPartition(part, constraint)
+
+        except Exception as e:
+            self.refresh_menu()
+            self.draw_info("ERROR: {:}".format(e))
+            return
+
+        self.refresh_menu()
+
+    def create_primary(self):
+        """Create a new primary partition."""
+        return parted.PARTITION_NORMAL
+
+    def create_logical(self):
+        """Create a new logical partition."""
+        return parted.PARTITION_LOGICAL
+
+
+        if part_type == parted.PARTITION_EXTENDED:
+            end = free.end
+            length = end - start + 1
+
+    def __cancel(self):
+        """Don't create a partition."""
+        self.vis_opts = self.free_opts
+        self.draw_options()
+
+    def __beginning(self):
+        """Add partition at beginning of free space."""
+        pass
+
+    def __end(self):
+        """Add partiton at end of free space."""
         pass
 
     def new_table(self):
         """Create a new partition table on the device (GPT, msdos)"""
         pass
+
+def minus_ext(parts):
+    return [p for p in parts if p != p.disk.getExtendedPartition()]
 
 def part_type(part):
     if part.type & parted.PARTITION_FREESPACE:
@@ -369,7 +469,6 @@ def next_to_extended(part):
         if parts[index + x] == part:
             return True
     return False
-
 
 def start_curses(stdscr, device):
     # Allow capture of KEY_ENTER via '\n'.
