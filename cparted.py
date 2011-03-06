@@ -73,7 +73,7 @@ FUNC = 1
 
 class Menu(object):
     """Holds the state of the options menu and partition table, provides
-    functions for drawing them, and contains the options functions."""
+       functions for drawing them, and contains the options functions."""
 
     def __init__(self, window, device):
         self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
@@ -255,6 +255,7 @@ class Menu(object):
         """Create a sub-menu, with limited input options, that captures the
            return value of the selected option."""
         self.vis_opts = opts + (("Cancel", self.__cancel),)
+        self.selected_option = 0
         self.draw_options()
         while True:
             key = self.window.getch()
@@ -332,8 +333,6 @@ class Menu(object):
 
     def new(self):
         """Create a new partition from free space."""
-        # Size: (defaults to max allowable aligned size)
-        # Menu: [Beginning] [End] (if smaller than max size)
         opts1 = (("Primary", self.create_primary),
                  ("Logical", self.create_logical))
         opts2 = (("Beginning", self.__beginning), ("End", self.__end))
@@ -386,15 +385,13 @@ class Menu(object):
             else:
                 return
 
-        # Make room for a logical partition's metadata.
-        if part_type == parted.PARTITION_LOGICAL:
-            start += alignment.grainSize
-            # Get the extended partition. If there is not one make a new one
-            # in the free space. Then, grow the extended partition to its max
-            # geometry. Then, add the logical partition. Last, shrink the
-            # extended partition.
-
         try:
+            # Make room for a logical partition's metadata and adjust the
+            # extended partition as necessary.
+            if part_type == parted.PARTITION_LOGICAL:
+                start += alignment.grainSize
+                grow_ext(self.__partition)
+
             if not alignment.isAligned(free, start):
                 start = alignment.alignDown(free, start)
             if not alignment.isAligned(free, end):
@@ -412,10 +409,14 @@ class Menu(object):
             self.disk.addPartition(part, constraint)
 
         except Exception as e:
+            if part_type == parted.PARTITION_LOGICAL:
+                self.disk.minimizeExtendedPartition()
             self.refresh_menu()
             self.draw_info("ERROR: {:}".format(e))
             return
 
+        if part_type == parted.PARTITION_LOGICAL:
+            self.disk.minimizeExtendedPartition()
         self.refresh_menu()
 
     def create_primary(self):
@@ -446,6 +447,18 @@ class Menu(object):
 
 def minus_ext(parts):
     return [p for p in parts if p != p.disk.getExtendedPartition()]
+
+def grow_ext(part):
+    """Grow, or create and grow, an extended partition to max size."""
+    ext = part.disk.getExtendedPartition()
+    if ext:
+        c = parted.Constraint(device = part.disk.device)
+        part.disk.maximizePartition(ext, c)
+    else:
+        c = parted.Constraint(exactGeom = part.geometry)
+        p = parted.Partition(part.disk, parted.PARTITION_EXTENDED, geometry = part.geometry)
+        part.disk.addPartition(p, c)
+
 
 def part_type(part):
     if part.type & parted.PARTITION_FREESPACE:
@@ -550,6 +563,7 @@ def start_curses(stdscr, device):
 def main():
     try:
         device = parted.Device(sys.argv[1])
+        parted.Disk(device).minimizeExtendedPartition()
     except IndexError:
         sys.stderr.write("ERROR: you must enter a device path\n")
         sys.exit(1)
