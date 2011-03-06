@@ -268,6 +268,7 @@ class Menu(object):
             if key == ord("\n"):
                 return self.call("Selected")
 
+
     ###########################################################################
     ## Option menu functions
     ###########################################################################
@@ -336,19 +337,54 @@ class Menu(object):
         opts1 = (("Primary", self.create_primary),
                  ("Logical", self.create_logical))
         opts2 = (("Beginning", self.__beginning), ("End", self.__end))
+        alignment = self.device.optimumAlignment
+        free = self.__partition.geometry
+        start = free.start
+        end = free.end
+        length = None
 
+        # Determine what type of partition to create.
         part_type = check_free_space(self.__partition)
         if part_type == "Pri/Log":
             part_type = self.sub_menu(opts1)
+            if part_type is None:
+                return
         elif part_type == "Primary":
             part_type = parted.PARTITION_NORMAL
         else:
             part_type = parted.PARTITION_LOGICAL
 
-        alignment = self.device.optimumAlignment
-        free = self.__partition.geometry
-        start = free.start
-        end = free.end
+        # Determine what length the new partition should be.
+        text = "Size in sectors: "
+        offset = self.center(text + str(free.length))
+        self.window.hline(self.menu_line, 0, " ", self.window_width)
+        self.window.addstr(self.menu_line, offset, text + str(free.length))
+        self.window.move(self.menu_line, offset + len(text))
+        key = self.window.getkey()
+        if key != "\n":
+            self.window.clrtoeol()
+            self.window.addstr(self.menu_line, offset + len(text), key)
+            curses.echo()
+            try:
+                length = self.window.getstr(self.menu_line, offset + len(text) + 1)
+                length = int(key + length)
+            except Exception as e:
+                self.refresh_menu()
+                self.draw_info("ERROR: {:}".format(e))
+                return
+            finally:
+                curses.noecho()
+
+        # Determine whether the partition should be placed at the beginning or end
+        # of the free space, and adjust the start/end locations accordingly.
+        if length and length < free.length:
+            location = self.sub_menu(opts2)
+            if location == "Beginning":
+                end = start + length
+            elif location == "End":
+                start = end - length
+            else:
+                return
 
         # Make room for a logical partition's metadata.
         if part_type == parted.PARTITION_LOGICAL:
@@ -390,23 +426,19 @@ class Menu(object):
         """Create a new logical partition."""
         return parted.PARTITION_LOGICAL
 
-
-        if part_type == parted.PARTITION_EXTENDED:
-            end = free.end
-            length = end - start + 1
-
     def __cancel(self):
         """Don't create a partition."""
         self.vis_opts = self.free_opts
         self.draw_options()
+        return None
 
     def __beginning(self):
         """Add partition at beginning of free space."""
-        pass
+        return "Beginning"
 
     def __end(self):
         """Add partiton at end of free space."""
-        pass
+        return "End"
 
     def new_table(self):
         """Create a new partition table on the device (GPT, msdos)"""
