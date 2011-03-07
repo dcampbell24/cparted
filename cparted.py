@@ -288,7 +288,7 @@ class Menu(object):
 
     def help_(self):
         """Print help screen."""
-        help_win = curses.newwin(0, 0)
+        help_win = curses.newwin(self.window_lines, self.window_width, 0, 0)
         help_win.overlay(self.window)
         info = "Press a key to continue."
 
