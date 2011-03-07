@@ -275,7 +275,8 @@ class Menu(object):
     ###########################################################################
     def bootable(self):
         """Toggle bootable flag of the current partition."""
-        pass
+        toggle_flag(self.__partition, parted.PARTITION_BOOT)
+        self.draw_partitions()
 
     def delete(self):
         """Delete the current partition."""
@@ -444,6 +445,12 @@ class Menu(object):
     def new_table(self):
         """Create a new partition table on the device (GPT, msdos)"""
         pass
+
+def toggle_flag(part, flag):
+    if part.getFlag(flag):
+        part.unsetFlag(flag)
+    else:
+        part.setFlag(flag)
 
 def minus_ext(parts):
     return [p for p in parts if p != p.disk.getExtendedPartition()]
