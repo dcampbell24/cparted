@@ -460,7 +460,8 @@ class Menu(object):
         cancel = make_fn(None, "Don't create a new disklabel (partition table).")
         fs = map(make_fn, parted.archLabels[arch])
         ty = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
-        self.disk = parted.freshDisk(self.device, ty)
+        if ty:
+            self.disk = parted.freshDisk(self.device, ty)
         self.refresh_menu()
 
 def make_fn(ret, doc=""):
