@@ -7,7 +7,7 @@ TODO List
 
 2. Figure out what to do with the Maximize option.
     * What exactly does the cfdisk version of this do?
-    * Does pyparted have something that is eqiuvalent?
+    * Does pyparted have something that is equivalent?
     * If implemented, ought this to grow the fs as gparted can do?
 
 3. Should btrfs be supported, if so, how?
@@ -24,4 +24,4 @@ TODO List
 
 9. Implement the Print option.
 
-10. Provide a usage message when wrong input is given at startup.
+10. Provide a usage message when wrong input is given at start-up.
