@@ -5,23 +5,18 @@ TODO List
     * Can parted correctly determine partition types?
     * Does changing the partition type matter or make sense?
 
-2. Figure out what to do with the Maximize option.
-    * What exactly does the cfdisk version of this do?
-    * Does pyparted have something that is equivalent?
-    * If implemented, ought this to grow the fs as gparted can do?
+2. Should btrfs be supported, if so, how?
 
-3. Should btrfs be supported, if so, how?
+3. Should we support grow, shrink, move, and create fs operations?
 
-4. Should we support grow, shrink, move, and create fs operations?
+4. Create a man page.
 
-5. Create a man page.
+5. Should we show labels as cfdisk does?
 
-6. Should we show labels as cfdisk does?
+6. Does anyone really care about the Bootable option?
 
-7. Does anyone really care about the Bootable option?
+7. Fix the "gaps" issue.
 
-8. Fix the "gaps" issue.
+8. Implement the Print option.
 
-9. Implement the Print option.
-
-10. Provide a usage message when wrong input is given at start-up.
+9. Provide a usage message when wrong input is given at start-up.

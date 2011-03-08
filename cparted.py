@@ -29,9 +29,6 @@ Command      Meaning
   b          Toggle bootable flag of the current partition
   d          Delete the current partition
   h          Print this screen
-  m          Maximize disk usage of the current partition
-             Note: This may make the partition incompatible with
-             DOS, OS/2, ...
   n          Create new partition from free space
   p          Print partition table to the screen or to a file
              There are several different formats for the partition
@@ -74,10 +71,9 @@ class Menu(object):
 
     def __init__(self, window, device):
         self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
-                          ("Help", self.help_), ("Maximize", self.maximize),
-                          ("Print", self.print_), ("Quit", self.quit),
-                          ("Type", self.type_), ("Units", self.units),
-                          ("Write", self.write))
+                          ("Help", self.help_), ("Print", self.print_),
+                          ("Quit", self.quit), ("Type", self.type_),
+                          ("Units", self.units), ("Write", self.write))
         self.free_opts = (("Help", self.help_), ("New", self.new),
                           ("Print", self.print_), ("Quit", self.quit),
                           ("Units", self.units), ("Write", self.write),
@@ -300,10 +296,6 @@ class Menu(object):
             help_win.addstr(self.window_lines - 1, self.center(info), info)
             help_win.getch()
         self.window.redrawwin()
-
-    def maximize(self):
-        """Maximize disk usage of the current partition (experts only)."""
-        pass
 
     def print_(self):
         """Print partition table to the screen or to a file."""
@@ -574,8 +566,6 @@ def start_curses(stdscr, device):
             menu.call("Delete")
         if key == ord("h") or key == ord("H") or key == ord("?"):
             menu.call("Help")
-        if key == ord("m") or key == ord("M"):
-            menu.call("Maximize")
         if key == ord("n") or key == ord("N"):
             menu.call("New")
         if key == ord("p") or key == ord("P"):
