@@ -8,6 +8,7 @@ This program is a curses front end to pyparted that mimics cfdisk.
 
 import curses
 import sys
+import platform
 from functools import reduce
 
 import parted
@@ -73,7 +74,8 @@ class Menu(object):
         self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
                           ("Help", self.help_), ("Print", self.print_),
                           ("Quit", self.quit), ("Type", self.type_),
-                          ("Units", self.units), ("Write", self.write))
+                          ("Units", self.units), ("Write", self.write),
+                          ("New Table", self.new_table))
         self.free_opts = (("Help", self.help_), ("New", self.new),
                           ("Print", self.print_), ("Quit", self.quit),
                           ("Units", self.units), ("Write", self.write),
@@ -311,12 +313,6 @@ class Menu(object):
 
     def units(self):
         """Change the units used to specify and display partition size."""
-        def make_fn(ret, doc):
-            def fn():
-                return ret
-            fn.__doc__  = doc
-            return fn
-
         B = make_fn("B", "bytes")
         kB = make_fn("kB", "kilobytes")
         MB = make_fn("MB", "megabytes")
@@ -459,8 +455,19 @@ class Menu(object):
         self.refresh_menu()
 
     def new_table(self):
-        """Create a new partition table on the device (GPT, msdos)"""
-        pass
+        """Create a new partition table on the device."""
+        arch = platform.machine()
+        cancel = make_fn(None, "Don't create a new disklabel (partition table).")
+        fs = map(make_fn, parted.archLabels[arch])
+        ty = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
+        self.disk = parted.freshDisk(self.device, ty)
+        self.refresh_menu()
+
+def make_fn(ret, doc=""):
+    def fn():
+        return ret
+    fn.__doc__  = doc
+    return fn
 
 def toggle_flag(part, flag):
     if part.getFlag(flag):
