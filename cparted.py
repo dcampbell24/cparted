@@ -90,6 +90,7 @@ class Menu(object):
         self.partitions = minus_ext(self.disk.allPartitions)
         self.select_partition(0)
         self.window = window
+        self.unit = "MB"
 
     @property
     def header(self):
@@ -104,16 +105,17 @@ class Menu(object):
         Partition Table: {:}
         """.format(__version__, self.device.path, self.device.model,
                    DEVICE_TYPES[self.device.type], self.device.length,
-                   self.device.getSize('b') / (10**9),
+                   self.device.getSize("GB"),
                    self.device.sectorSize, self.device.physicalSectorSize,
                    self.disk.type)
-        ret = ""
+        part_fields = ("Name", "Flags", "Part Type", "FS Type",
+                       "Size({:})".format(self.unit))
+        header = ""
         for line in text.splitlines():
-            ret += "{:^{:}}".format(line, self.window_width)
-        ret += self.format_fields(("Name", "Flags", "Part Type", "FS Type",
-                                   "Size(MB)")) + "\n"
-        ret += "-" * self.window_width + "\n"
-        return ret
+            header += "{:^{:}}".format(line, self.window_width)
+        header += self.format_fields(part_fields) + "\n"
+        header += "-" * self.window_width + "\n"
+        return header
 
     @property
     def window_lines(self):
@@ -215,7 +217,7 @@ class Menu(object):
             s += self.format_fields((part.getDeviceNodeName(),
                                      part.getFlagsAsString(),
                                      part_type(part), fs_type(part),
-                                     int(part.getSize('b') / 10**6))) + "\n"
+                                     int(part.getSize(self.unit)))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
         self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
 
@@ -240,21 +242,21 @@ class Menu(object):
                           self.opt_coords[self.selected_option][END], attr)
 
     def left_right(self, key):
+        num_opts = len(self.vis_opts)
+        self.chgat_option(curses.A_NORMAL)
+
         if key == curses.KEY_LEFT:
-            if self.selected_option > 0:
-                self.chgat_option(curses.A_NORMAL)
-                self.selected_option -= 1
-                self.chgat_option(curses.A_STANDOUT)
-        elif self.selected_option < (len(self.vis_opts) - 1):
-            self.chgat_option(curses.A_NORMAL)
-            self.selected_option += 1
-            self.chgat_option(curses.A_STANDOUT)
+            self.selected_option = (self.selected_option - 1) % num_opts
+        else:
+            self.selected_option = (self.selected_option + 1) % num_opts
+
+        self.chgat_option(curses.A_STANDOUT)
         self.draw_info(self.vis_opts[self.selected_option][FUNC].__doc__)
 
     def sub_menu(self, opts):
         """Create a sub-menu, with limited input options, that captures the
            return value of the selected option."""
-        self.vis_opts = opts + (("Cancel", self.__cancel),)
+        self.vis_opts = opts
         self.selected_option = 0
         self.draw_options()
         while True:
@@ -319,8 +321,31 @@ class Menu(object):
         pass
 
     def units(self):
-        """Change units of the partition size display (MB, sect, cyl)."""
-        pass
+        """Change the units used to specify and display partition size."""
+        def cancel():
+            """Don't change the units."""
+            return None
+
+        def make_fn(ret, doc):
+            def fn():
+                return ret
+            fn.__doc__  = doc
+            return fn
+
+        sectors = make_fn("sectors", "For those full of awesome.")
+        B = make_fn("B", "bytes")
+        kB = make_fn("kB", "kilobytes")
+        MB = make_fn("MB", "megabytes")
+        GB = make_fn("GB", "gigabytes")
+        KiB = make_fn("KiB", "kibibytes")
+        MiB = make_fn("MiB", "mebibytes")
+        GiB = make_fn("GiB", "gibibytes")
+        fs = (B, kB, MB, GB, KiB, MiB, GiB, sectors)
+        u = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
+        if u:
+            self.unit = u
+            self.draw_header()
+        self.refresh_menu()
 
     def write(self):
         """Write partition table to disk (this might destroy data)."""
@@ -334,10 +359,35 @@ class Menu(object):
 
     def new(self):
         """Create a new partition from free space."""
-        opts1 = (("Primary", self.create_primary),
-                 ("Logical", self.create_logical))
-        opts2 = (("Beginning", self.__beginning), ("End", self.__end))
+        def create_primary():
+            """Create a new primary partition."""
+            return parted.PARTITION_NORMAL
+
+        def create_logical():
+            """Create a new logical partition."""
+            return parted.PARTITION_LOGICAL
+
+        def cancel():
+            """Don't create a partition."""
+            self.vis_opts = self.free_opts
+            self.draw_options()
+            return None
+
+        def at_beginning():
+            """Add partition at beginning of free space."""
+            return "Beginning"
+
+        def at_end():
+            """Add partiton at end of free space."""
+            return "End"
+
+        opts1 = (("Primary", create_primary), ("Logical", create_logical),
+                 ("Cancel", cancel))
+        opts2 = (("Beginning", at_beginning), ("End", at_end),
+                 ("Cancel", cancel))
+
         alignment = self.device.optimumAlignment
+        sector_size = self.device.sectorSize
         free = self.__partition.geometry
         start = free.start
         end = free.end
@@ -419,28 +469,6 @@ class Menu(object):
         if part_type == parted.PARTITION_LOGICAL:
             self.disk.minimizeExtendedPartition()
         self.refresh_menu()
-
-    def create_primary(self):
-        """Create a new primary partition."""
-        return parted.PARTITION_NORMAL
-
-    def create_logical(self):
-        """Create a new logical partition."""
-        return parted.PARTITION_LOGICAL
-
-    def __cancel(self):
-        """Don't create a partition."""
-        self.vis_opts = self.free_opts
-        self.draw_options()
-        return None
-
-    def __beginning(self):
-        """Add partition at beginning of free space."""
-        return "Beginning"
-
-    def __end(self):
-        """Add partiton at end of free space."""
-        return "End"
 
     def new_table(self):
         """Create a new partition table on the device (GPT, msdos)"""
