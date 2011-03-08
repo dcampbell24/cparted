@@ -322,17 +322,12 @@ class Menu(object):
 
     def units(self):
         """Change the units used to specify and display partition size."""
-        def cancel():
-            """Don't change the units."""
-            return None
-
         def make_fn(ret, doc):
             def fn():
                 return ret
             fn.__doc__  = doc
             return fn
 
-        sectors = make_fn("sectors", "For those full of awesome.")
         B = make_fn("B", "bytes")
         kB = make_fn("kB", "kilobytes")
         MB = make_fn("MB", "megabytes")
@@ -340,6 +335,8 @@ class Menu(object):
         KiB = make_fn("KiB", "kibibytes")
         MiB = make_fn("MiB", "mebibytes")
         GiB = make_fn("GiB", "gibibytes")
+        sectors = make_fn("sectors", "For those full of awesome.")
+        cancel = make_fn(None, "Don't chnage the units.")
         fs = (B, kB, MB, GB, KiB, MiB, GiB, sectors)
         u = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
         if u:
@@ -405,10 +402,10 @@ class Menu(object):
             part_type = parted.PARTITION_LOGICAL
 
         # Determine what length the new partition should be.
-        text = "Size in sectors: "
-        offset = self.center(text + str(free.length))
+        text = "Size in {:}: ".format(self.unit)
+        offset = self.center(text + str(free.getSize(self.unit)))
         self.window.hline(self.menu_line, 0, " ", self.window_width)
-        self.window.addstr(self.menu_line, offset, text + str(free.length))
+        self.window.addstr(self.menu_line, offset, text + str(free.getSize(self.unit)))
         self.window.move(self.menu_line, offset + len(text))
         key = self.window.getkey()
         if key != "\n":
@@ -418,6 +415,8 @@ class Menu(object):
             try:
                 length = self.window.getstr(self.menu_line, offset + len(text) + 1)
                 length = int(key + length)
+                if self.unit != "sectors":
+                    length = parted.bytesToSectors(length, self.unit, sector_size)
             except Exception as e:
                 self.refresh_menu()
                 self.draw_info("ERROR: {:}".format(e))
