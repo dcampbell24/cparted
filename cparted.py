@@ -28,9 +28,6 @@ Command      Meaning
 -------      -------
   b          Toggle bootable flag of the current partition
   d          Delete the current partition
-  g          Change cylinders, heads, sectors-per-track parameters
-             WARNING: This option should only be used by people who
-             know what they are doing.
   h          Print this screen
   m          Maximize disk usage of the current partition
              Note: This may make the partition incompatible with
@@ -575,8 +572,6 @@ def start_curses(stdscr, device):
             menu.call("Bootable")
         if key == ord("d") or key ==  ord("D"):
             menu.call("Delete")
-        if key == ord("g") or key ==  ord("G"):
-            menu.call("Unknown")
         if key == ord("h") or key == ord("H") or key == ord("?"):
             menu.call("Help")
         if key == ord("m") or key == ord("M"):
