@@ -1,18 +1,14 @@
 TODO List
 =========
 
-1. Should btrfs be supported, if so, how?
+1. Create a man page.
 
-2. Should we support grow, shrink, move, and create fs operations?
+2. Should we show labels as cfdisk does?
 
-3. Create a man page.
+3. Does anyone really care about the Bootable option?
 
-4. Should we show labels as cfdisk does?
+4. Fix the "gaps" issue.
 
-5. Does anyone really care about the Bootable option?
+5. Implement the Print option.
 
-6. Fix the "gaps" issue.
-
-7. Implement the Print option.
-
-8. Provide a usage message when wrong input is given at start-up.
+6. Provide a usage message when wrong input is given at start-up.
