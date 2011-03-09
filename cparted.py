@@ -38,7 +38,6 @@ Command      Meaning
                 s - Table ordered by sectors
                 t - Table in raw format
   q          Quit program without writing partition table
-  t          Change the filesystem type
   u          Change units of the partition size display
              Rotates through MB, sectors and cylinders
   W          Write partition table to disk (must enter upper case W)
@@ -73,9 +72,8 @@ class Menu(object):
     def __init__(self, window, device):
         self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
                           ("Help", self.help_), ("Print", self.print_),
-                          ("Quit", self.quit), ("Type", self.type_),
-                          ("Units", self.units), ("Write", self.write),
-                          ("New Table", self.new_table))
+                          ("Quit", self.quit), ("Units", self.units),
+                          ("Write", self.write), ("New Table", self.new_table))
         self.free_opts = (("Help", self.help_), ("New", self.new),
                           ("Print", self.print_), ("Quit", self.quit),
                           ("Units", self.units), ("Write", self.write),
@@ -306,10 +304,6 @@ class Menu(object):
     def quit(self):
         """Quit program without writing partition table."""
         sys.exit()
-
-    def type_(self):
-        """Change the filesystem type (DOS, Linux, OS/2 and so on)."""
-        pass
 
     def units(self):
         """Change the units used to specify and display partition size."""
@@ -580,8 +574,6 @@ def start_curses(stdscr, device):
             menu.call("Print")
         if key == ord("q") or key == ord("Q"):
             menu.call("Quit")
-        if key == ord("t") or key == ord("T"):
-            menu.call("Type")
         if key == ord("u") or key == ord("U"):
             menu.call("Units")
         if key == ord("W"):
