@@ -80,7 +80,7 @@ class Menu(object):
                           ("New Table", self.new_table))
         self.device = device
         self.disk = parted.Disk(device)
-        self.partitions = minus_ext(self.disk.allPartitions)
+        self.partitions = minus_ext(get_partitions(self.disk))
         self.select_partition(0)
         self.window = window
         self.unit = "MB"
@@ -171,7 +171,7 @@ class Menu(object):
         self.draw_options()
 
     def refresh_menu(self):
-        self.partitions = minus_ext(self.disk.allPartitions)
+        self.partitions = minus_ext(get_partitions(self.disk))
 
         if self.__partition_number >= len(self.partitions):
             self.chgat_partition(curses.A_NORMAL)
@@ -464,6 +464,14 @@ def make_fn(ret, doc=""):
     fn.__doc__  = doc
     return fn
 
+def get_partitions(disk):
+    """Get all primary, logical, extended, and free space partitions."""
+    partitions = disk.partitions
+    free_space = disk.getFreeSpacePartitions()
+    partitions = sorted(list(partitions) + free_space,
+                        key = lambda ps: ps.geometry.start)
+    return partitions
+
 def toggle_flag(part, flag):
     if part.getFlag(flag):
         part.unsetFlag(flag)
@@ -525,7 +533,7 @@ def check_free_space(part):
 
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
-    parts = part.disk.allPartitions
+    parts = get_partitions(part.disk)
     for p, i in zip(parts, range(len(parts))):
         if p.type & parted.PARTITION_EXTENDED:
             index = i
