@@ -7,6 +7,7 @@ This program is a curses front end to pyparted that mimics cfdisk.
 """
 
 import curses
+import curses.textpad
 import sys
 import platform
 from functools import reduce
@@ -389,19 +390,17 @@ class Menu(object):
         key = self.window.getkey()
         if key != "\n":
             self.window.clrtoeol()
-            self.window.addstr(self.menu_line, offset + len(text), key)
-            curses.echo()
+            editwin = curses.newwin(1, 20, self.menu_line, offset + len(text))
+            editwin.addstr(key)
+            textbox = curses.textpad.Textbox(editwin)
             try:
-                length = self.window.getstr(self.menu_line, offset + len(text) + 1)
-                length = int(key + length)
+                length = int(textbox.edit(accept_bs))
                 if self.unit != "sectors":
                     length = parted.bytesToSectors(length, self.unit, sector_size)
             except Exception as e:
                 self.refresh_menu()
                 self.draw_info("ERROR: {:}".format(e))
                 return
-            finally:
-                curses.noecho()
 
         # Determine whether the partition should be placed at the beginning or end
         # of the free space, and adjust the start/end locations accordingly.
@@ -463,6 +462,11 @@ def make_fn(ret, doc=""):
         return ret
     fn.__doc__  = doc
     return fn
+
+def accept_bs(key):
+    if key == 127: # backspace
+        return curses.KEY_BACKSPACE
+    return key
 
 def get_partitions(disk):
     """Get all primary, logical, extended, and free space partitions."""
