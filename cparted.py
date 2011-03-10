@@ -394,9 +394,11 @@ class Menu(object):
             editwin.addstr(key)
             textbox = curses.textpad.Textbox(editwin)
             try:
-                length = int(textbox.edit(accept_bs))
+                length = float(textbox.edit(accept_bs))
                 if self.unit != "sectors":
                     length = parted.bytesToSectors(length, self.unit, sector_size)
+                else:
+                    length = int(length)
             except Exception as e:
                 self.refresh_menu()
                 self.draw_info("ERROR: {:}".format(e))
