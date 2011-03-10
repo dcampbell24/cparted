@@ -195,10 +195,14 @@ class Menu(object):
 
     def draw_options(self):
         """Redraw the menu when switching partitions."""
-        self.window.hline(self.menu_line, 0, " ", self.window_width)
-        self.window.addstr(self.menu_line, self.opts_offset, self.opts_string)
-        self.chgat_option(curses.A_STANDOUT)
-        self.draw_info(self.vis_opts[self.selected_option][FUNC].__doc__)
+        try:
+            self.window.hline(self.menu_line, 0, " ", self.window_width)
+            self.window.addstr(self.menu_line, self.opts_offset, self.opts_string)
+            self.chgat_option(curses.A_STANDOUT)
+            self.draw_info(self.vis_opts[self.selected_option][FUNC].__doc__)
+        except Exception:
+            self.draw_info("ERR: window too small")
+
 
     def format_fields(self, cols):
         fields = ("{:{a}} {:{a}} {:{a}} {:{a}} {:>{a}}").\
@@ -258,13 +262,18 @@ class Menu(object):
             if key == -1: # no input
                 continue
             if key == curses.KEY_RESIZE or key == 12: #^L
-                self.window.erase()
-                self.draw_menu()
+                self.resize_menu()
             if key == curses.KEY_RIGHT or key == curses.KEY_LEFT:
                 self.left_right(key)
             if key == ord("\n"):
                 return self.call("Selected")
 
+    def resize_menu(self):
+        try:
+            self.window.erase()
+            self.draw_menu()
+        except Exception:
+            self.draw_info("ERR: window too small")
 
     ###########################################################################
     ## Option menu functions
@@ -570,8 +579,7 @@ def start_curses(stdscr, device):
         if key == -1: # no input
             continue
         if key == curses.KEY_RESIZE or key == 12: #^L
-            stdscr.erase()
-            menu.draw_menu()
+            menu.resize_menu()
         if key == curses.KEY_DOWN or key == curses.KEY_UP:
             menu.up_down(key)
         if key == curses.KEY_RIGHT or key == curses.KEY_LEFT:
