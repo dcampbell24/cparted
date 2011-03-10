@@ -517,13 +517,15 @@ def check_free_space(part):
     disk = part.disk
     if len(disk.partitions) == disk.maxSupportedPartitionCount:
         return "Unusable" # Too many partitions
-    if disk.primaryPartitionCount == disk.maxPrimaryPartitionCount:
+    if disk.primaryPartitionCount >= disk.maxPrimaryPartitionCount:
         if (len(disk.getLogicalPartitions()) == disk.getMaxLogicalPartitions):
             return "Unusable" # Too many logical partitions or no extended.
         elif next_to_extended(part):
             return "Logical"
         else:
             return "Unusable"
+    elif disk.type == "gpt":
+        return "Primary" # gpt only has primary partitions.
     elif not disk.getExtendedPartition():
         return "Pri/Log" # If logical, create an extended partition.
     elif next_to_extended(part):
