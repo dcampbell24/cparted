@@ -212,8 +212,8 @@ class Menu(object):
     def draw_partitions(self):
         s = ""
         for part in self.partitions:
-            s += self.format_fields((part.getDeviceNodeName(),
-                                     part.getFlagsAsString(),
+            s += self.format_fields((ignore_free(part, part.getDeviceNodeName),
+                                     ignore_free(part, part.getFlagsAsString),
                                      part_type(part), fs_type(part),
                                      int(part.getSize(self.unit)))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
@@ -473,6 +473,12 @@ def make_fn(ret, doc=""):
         return ret
     fn.__doc__  = doc
     return fn
+
+
+def ignore_free(part, fn):
+    if part.type & parted.PARTITION_FREESPACE:
+        return ""
+    return fn()
 
 def accept_bs(key):
     if key == 127: # backspace
