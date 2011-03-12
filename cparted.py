@@ -550,7 +550,10 @@ def check_free_space(part):
     elif not disk.getExtendedPartition():
         return "Pri/Log" # If logical, create an extended partition.
     elif next_to_extended(part):
-        return "Pri/Log"
+        if disk.getExtendedPartition().geometry.contains(part.geometry):
+            return "Logical"
+        else:
+            return "Pri/Log"
     else:
         return "Primary"
 
