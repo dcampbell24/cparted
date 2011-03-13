@@ -99,7 +99,7 @@ class Menu(object):
         Partition Table: {:}
         """.format(__version__, self.device.path, self.device.model,
                    DEVICE_TYPES[self.device.type], self.device.length,
-                   self.device.getSize("GB"),
+                   self.device.getLength("GB"),
                    self.device.sectorSize, self.device.physicalSectorSize,
                    self.disk.type)
         part_fields = ("Name", "Flags", "Part Type", "FS Type",
@@ -215,7 +215,7 @@ class Menu(object):
             s += self.format_fields((ignore_free(part, part.getDeviceNodeName),
                                      ignore_free(part, part.getFlagsAsString),
                                      part_type(part), fs_type(part),
-                                     int(part.getSize(self.unit)))) + "\n"
+                                     int(part.getLength(self.unit)))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
         self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
 
@@ -392,9 +392,9 @@ class Menu(object):
 
         # Determine what length the new partition should be.
         text = "Size in {:}: ".format(self.unit)
-        offset = self.center(text + str(free.getSize(self.unit)))
+        offset = self.center(text + str(free.getLength(self.unit)))
         self.window.hline(self.menu_line, 0, " ", self.window_width)
-        self.window.addstr(self.menu_line, offset, text + str(free.getSize(self.unit)))
+        self.window.addstr(self.menu_line, offset, text + str(free.getLength(self.unit)))
         self.window.move(self.menu_line, offset + len(text))
         key = self.window.getkey()
         if key != "\n":
