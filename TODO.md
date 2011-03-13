@@ -5,10 +5,8 @@ TODO List
 
 2. Should we show labels as cfdisk does?
 
-3. Does anyone really care about the Bootable option?
+3. Fix the "gaps" issue.
 
-4. Fix the "gaps" issue.
+4. Implement the Print option.
 
-5. Implement the Print option.
-
-6. Provide a usage message when wrong input is given at start-up.
+5. Provide a usage message when wrong input is given at start-up.
