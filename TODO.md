@@ -8,5 +8,3 @@ TODO List
 3. Fix the "gaps" issue.
 
 4. Implement the Print option.
-
-5. Provide a usage message when wrong input is given at start-up.
