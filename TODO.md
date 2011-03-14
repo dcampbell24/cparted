@@ -6,5 +6,3 @@ TODO List
 2. Should we show labels as cfdisk does?
 
 3. Fix the "gaps" issue.
-
-4. Implement the Print option.

@@ -32,12 +32,6 @@ Command      Meaning
   d          Delete the current partition
   h          Print this screen
   n          Create new partition from free space
-  p          Print partition table to the screen or to a file
-             There are several different formats for the partition
-             that you can choose from:
-                r - Raw data (exactly what would be written to disk)
-                s - Table ordered by sectors
-                t - Table in raw format
   q          Quit program without writing partition table
   u          Change units of the partition size display
              Rotates through MB, sectors and cylinders
@@ -72,13 +66,12 @@ class Menu(object):
 
     def __init__(self, window, device):
         self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
-                          ("Help", self.help_), ("Print", self.print_),
-                          ("Quit", self.quit), ("Units", self.units),
-                          ("Write", self.write), ("New Table", self.new_table))
-        self.free_opts = (("Help", self.help_), ("New", self.new),
-                          ("Print", self.print_), ("Quit", self.quit),
+                          ("Help", self.help_), ("Quit", self.quit),
                           ("Units", self.units), ("Write", self.write),
                           ("New Table", self.new_table))
+        self.free_opts = (("Help", self.help_), ("New", self.new),
+                          ("Quit", self.quit), ("Units", self.units),
+                          ("Write", self.write), ("New Table", self.new_table))
         self.device = device
         self.disk = parted.Disk(device)
         self.partitions = minus_ext(get_partitions(self.disk))
@@ -306,10 +299,6 @@ class Menu(object):
             help_win.addstr(self.window_lines - 1, self.center(info), info)
             help_win.getch()
         self.window.redrawwin()
-
-    def print_(self):
-        """Print partition table to the screen or to a file."""
-        pass
 
     def quit(self):
         """Quit program without writing partition table."""
@@ -603,8 +592,6 @@ def start_curses(stdscr, device):
             menu.call("Help")
         if key == ord("n") or key == ord("N"):
             menu.call("New")
-        if key == ord("p") or key == ord("P"):
-            menu.call("Print")
         if key == ord("q") or key == ord("Q"):
             menu.call("Quit")
         if key == ord("u") or key == ord("U"):
