@@ -29,7 +29,7 @@ be able to have a msdos partition table without primary partitions.
 HACKING
 -------
 If you wish to contribute to [cparted][2], please fork it on github, and then make
-pull requests. Your code should follow the guidlines of [PEP 8][3]
+pull requests. Your code should follow the guidelines of [PEP 8][3]
 
 [2]: https://github.com/davekong/cparted
 [3]: http://www.python.org/dev/peps/pep-0008/
