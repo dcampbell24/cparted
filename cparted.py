@@ -24,7 +24,7 @@ This is cparted, a curses based disk partitioning program, which
 allows you to create, delete and modify partitions on your hard
 disk drive.
 
-Copyright (C) 2011 David Campbell
+Copyright (C) 2011 David Campbell <davekong@archlinux.us>
 
 Command      Meaning
 -------      -------
