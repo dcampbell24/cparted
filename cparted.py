@@ -391,6 +391,7 @@ class Menu(object):
             editwin = curses.newwin(1, 20, self.menu_line, offset + len(text))
             editwin.addstr(key)
             textbox = curses.textpad.Textbox(editwin)
+            accept_bs = lambda key: curses.KEY_BACKSPACE if key == 127 else key
             try:
                 length = float(textbox.edit(accept_bs))
                 if self.unit != "sectors":
@@ -461,16 +462,10 @@ def make_fn(ret, doc=""):
     fn.__doc__  = doc
     return fn
 
-
 def ignore_free(part, fn):
     if part.type & parted.PARTITION_FREESPACE:
         return ""
     return fn()
-
-def accept_bs(key):
-    if key == 127: # backspace
-        return curses.KEY_BACKSPACE
-    return key
 
 def get_partitions(disk):
     """Get all primary, logical, extended, and free space partitions."""
@@ -499,7 +494,6 @@ def grow_ext(part):
         c = parted.Constraint(exactGeom = part.geometry)
         p = parted.Partition(part.disk, parted.PARTITION_EXTENDED, geometry = part.geometry)
         part.disk.addPartition(p, c)
-
 
 def part_type(part):
     if part.type & parted.PARTITION_FREESPACE:
