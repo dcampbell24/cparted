@@ -1,18 +1,29 @@
-cparted
+% CPARTED(8)
+% David Campbell <davekong@archlinux.us>
+% 14 March 2011
+
+NAME
+====
+cparted - Curses based disk partition manipulation program
+
+
+Synopsis
 ========
+`cparted` *device_path*
 
-Copyright (C) 2011 David Campbell <davekong@archlinux.us>
-This program is licensed under the GPL. See COPYING for the full license.
 
-This program is a curses front end to [pyparted][1] that mimics cfdisk. It
-has not been widely tested, and has known issues with creating gaps between
-partitions, and sometimes corrupting a partition table. It is only suggested
-for testing at the moment.
+Description
+===========
+`cparted` is a curses based disk partition manipulation program that aims to
+replace cfdisk by providing a friendly curses interface with the partition
+manipulation power of libparted. `cparted` is written in Python, and thus
+makes use of libparted through pyparted.
 
-[1]: http://git.fedorahosted.org/git/?p=pyparted.git
 
 BUGS
-----
+====
+WARNING: this software has not been widely tested and has a least a few issues.
+
 When creating primary partitions, there tend to be gaps of free
 space between the partitions that are not usable. These gaps are typically
 just smaller than the optimal alignment grain size of the HDD (or SSD). These
@@ -26,10 +37,11 @@ without any primary partitions is allowed at this point, despite the known
 issue, for testing reasons, and because there is no reason a user should not
 be able to have a msdos partition table without primary partitions.
 
-HACKING
--------
-If you wish to contribute to [cparted][2], please fork it on github, and then make
-pull requests. Your code should follow the guidlines of [PEP 8][3]
+If you notice additional bugs or have feature requests, create issues for them
+at  
+<https://github.com/davekong/cparted/issues>.
 
-[2]: https://github.com/davekong/cparted
-[3]: http://www.python.org/dev/peps/pep-0008/
+
+SEE ALSO
+========
+`parted`(8)
