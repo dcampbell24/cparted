@@ -414,10 +414,8 @@ class Menu(object):
                 return
 
         try:
-            # Make room for a logical partition's metadata and adjust the
-            # extended partition as necessary.
+            # Create or extend an extended partition to hold the logical one.
             if part_type == parted.PARTITION_LOGICAL:
-                start += alignment.grainSize
                 grow_ext(self.__partition)
 
             if not alignment.isAligned(free, start):
