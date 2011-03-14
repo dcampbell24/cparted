@@ -7,12 +7,12 @@ NAME
 cparted - Curses based disk partition manipulation program
 
 
-Synopsis
+SYNOPSIS
 ========
 `cparted` *device_path*
 
 
-Description
+DESCRIPTION
 ===========
 `cparted` is a curses based disk partition manipulation program that aims to
 replace cfdisk by providing a friendly curses interface with the partition
