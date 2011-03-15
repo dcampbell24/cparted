@@ -1,28 +1,37 @@
-% CPARTED(8)
-% David Campbell <davekong@archlinux.us>
-% 14 March 2011
+:man manual: cparted Manual
+:revdate: 14 March 2011
+
+CPARTED(8)
+==========
 
 NAME
-====
+----
 cparted - Curses based disk partition manipulation program
 
 
 SYNOPSIS
-========
-`cparted` *device_path*
+--------
+*cparted* [_OPTION_] _DEVICE_PATH_
 
 
 DESCRIPTION
-===========
-`cparted` is a curses based disk partition manipulation program that aims to
+-----------
+*cparted* is a curses based disk partition manipulation program that aims to
 replace cfdisk by providing a friendly curses interface with the partition
-manipulation power of libparted. `cparted` is written in Python, and thus
+manipulation power of libparted. *cparted* is written in Python, and thus
 makes use of libparted through pyparted.
 
 
+OPTIONS
+-------
+*\--debug*::
+    Start *cparted* in debug mode. This causes *cparted* to display extended,
+    metadata, and protected partitions, and sets the default unit to sectors.
+
+
 BUGS
-====
-WARNING: this software has not been widely tested and has a least a few issues.
+----
+Warning: this software has not been widely tested and has a least a few issues.
 
 When creating primary partitions, there tend to be gaps of free
 space between the partitions that are not usable. These gaps are typically
@@ -38,10 +47,14 @@ issue, for testing reasons, and because there is no reason a user should not
 be able to have a msdos partition table without primary partitions.
 
 If you notice additional bugs or have feature requests, create issues for them
-at  
-<https://github.com/davekong/cparted/issues>.
+at +
+\https://github.com/davekong/cparted/issues.
 
 
 SEE ALSO
-========
-`parted`(8)
+--------
+*parted*(8)
+
+AUTHOR
+------
+David Campbell <\davekong@archlinux.us>

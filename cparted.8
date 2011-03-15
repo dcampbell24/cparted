@@ -1,48 +1,62 @@
-.TH CPARTED 8 "14 March 2011" 
-.SH NAME
+'\" t
+.\"     Title: cparted
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 14 March 2011
+.\"    Manual: cparted Manual
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "CPARTED" "8" "14 March 2011" "\ \&" "cparted Manual"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+cparted \- Curses based disk partition manipulation program
+.SH "SYNOPSIS"
+.sp
+\fBcparted\fR [\fIOPTION\fR] \fIDEVICE_PATH\fR
+.SH "DESCRIPTION"
+.sp
+\fBcparted\fR is a curses based disk partition manipulation program that aims to replace cfdisk by providing a friendly curses interface with the partition manipulation power of libparted\&. \fBcparted\fR is written in Python, and thus makes use of libparted through pyparted\&.
+.SH "OPTIONS"
 .PP
-cparted - Curses based disk partition manipulation program
-.SH SYNOPSIS
-.PP
-\f[B]cparted\f[] \f[I]device_path\f[]
-.SH DESCRIPTION
-.PP
-\f[B]cparted\f[] is a curses based disk partition manipulation
-program that aims to replace cfdisk by providing a friendly curses
-interface with the partition manipulation power of libparted.
-\f[B]cparted\f[] is written in Python, and thus makes use of
-libparted through pyparted.
-.SH BUGS
-.PP
-WARNING: this software has not been widely tested and has a least a
-few issues.
-.PP
-When creating primary partitions, there tend to be gaps of free
-space between the partitions that are not usable.
-These gaps are typically just smaller than the optimal alignment
-grain size of the HDD (or SSD).
-These gaps may be hidden in a future release, but are left visible
-for now as the author does not know if there is a proper way to get
-rid of them.
-.PP
-If the user creates a logical partition on a disk without any
-primary partitions, two regions of free space may appear next to
-each other, and writing to disk may corrupt the partition table.
-Creating a logical partition without any primary partitions is
-allowed at this point, despite the known issue, for testing
-reasons, and because there is no reason a user should not be able
-to have a msdos partition table without primary partitions.
-.PP
-If you notice additional bugs or have feature requests, create
-issues for them
-at
-.PD 0
-.P
-.PD
-<https://github.com/davekong/cparted/issues>.
-.SH SEE ALSO
-.PP
-\f[B]parted\f[](8)
-.SH AUTHORS
-David Campbell <davekong@archlinux.us>.
-
+\fB\-\-debug\fR
+.RS 4
+Start
+\fBcparted\fR
+in debug mode\&. This causes
+\fBcparted\fR
+to display extended, metadata, and protected partitions, and sets the default unit to sectors\&.
+.RE
+.SH "BUGS"
+.sp
+Warning: this software has not been widely tested and has a least a few issues\&.
+.sp
+When creating primary partitions, there tend to be gaps of free space between the partitions that are not usable\&. These gaps are typically just smaller than the optimal alignment grain size of the HDD (or SSD)\&. These gaps may be hidden in a future release, but are left visible for now as the author does not know if there is a proper way to get rid of them\&.
+.sp
+If the user creates a logical partition on a disk without any primary partitions, two regions of free space may appear next to each other, and writing to disk may corrupt the partition table\&. Creating a logical partition without any primary partitions is allowed at this point, despite the known issue, for testing reasons, and because there is no reason a user should not be able to have a msdos partition table without primary partitions\&.
+.sp
+If you notice additional bugs or have feature requests, create issues for them at https://github\&.com/davekong/cparted/issues\&.
+.SH "SEE ALSO"
+.sp
+\fBparted\fR(8)
+.SH "AUTHOR"
+.sp
+David Campbell <davekong@archlinux\&.us>

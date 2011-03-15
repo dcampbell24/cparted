@@ -48,6 +48,7 @@ Note: All of the commands can be entered with either upper or lower
 case letters (except for Writes).
 """
 
+DEBUG = None
 PART_TABLE = 10 # Where to start listing partitions from.
 PART_TYPES = ("Logical", "Extended", "Free Space", "Metadata", "Protected")
 DEVICE_TYPES = ("Unknown", "SCSI", "IDE", "DAC960", "CPQ Array", "File",
@@ -65,19 +66,24 @@ class Menu(object):
        functions for drawing them, and contains the options functions."""
 
     def __init__(self, window, device):
-        self.part_opts = (("Bootable", self.bootable), ("Delete", self.delete),
-                          ("Help", self.help_), ("Quit", self.quit),
-                          ("Units", self.units), ("Write", self.write),
-                          ("New Table", self.new_table))
+        self.part_opts = (("Help", self.help_), ("Delete", self.delete),
+                          ("Bootable", self.bootable), ("Units", self.units),
+                          ("Write", self.write), ("New Table", self.new_table),
+                          ("Quit", self.quit))
         self.free_opts = (("Help", self.help_), ("New", self.new),
-                          ("Quit", self.quit), ("Units", self.units),
-                          ("Write", self.write), ("New Table", self.new_table))
+                          ("Units", self.units), ("Write", self.write),
+                          ("New Table", self.new_table), ("Quit", self.quit))
+        self.meta_opts = (("Help", self.help_), ("Units", self.units),
+                          ("New Table", self.new_table), ("Quit", self.quit))
         self.device = device
         self.disk = parted.Disk(device)
-        self.partitions = minus_ext(get_partitions(self.disk))
+        self.partitions = get_partitions(self.disk, debug=DEBUG)
         self.select_partition(0)
         self.window = window
-        self.unit = "MB"
+        if DEBUG is None:
+            self.unit = "MB"
+        else:
+            self.unit = "sectors"
 
     @property
     def header(self):
@@ -156,6 +162,9 @@ class Menu(object):
         self.selected_option = 1 # Delete/New
         if self.__partition.type & parted.PARTITION_FREESPACE:
             self.vis_opts = self.free_opts
+        elif self.__partition.type & parted.PARTITION_METADATA or \
+             self.__partition.type & parted.PARTITION_PROTECTED:
+            self.vis_opts = self.meta_opts
         else:
             self.vis_opts = self.part_opts
 
@@ -165,7 +174,7 @@ class Menu(object):
         self.draw_options()
 
     def refresh_menu(self):
-        self.partitions = minus_ext(get_partitions(self.disk))
+        self.partitions = get_partitions(self.disk, debug=DEBUG)
 
         if self.__partition_number >= len(self.partitions):
             self.chgat_partition(curses.A_NORMAL)
@@ -205,8 +214,8 @@ class Menu(object):
     def draw_partitions(self):
         s = ""
         for part in self.partitions:
-            s += self.format_fields((ignore_free(part, part.getDeviceNodeName),
-                                     ignore_free(part, part.getFlagsAsString),
+            s += self.format_fields((if_active(part, part.getDeviceNodeName),
+                                     if_active(part, part.getFlagsAsString),
                                      part_type(part), fs_type(part),
                                      int(part.getLength(self.unit)))) + "\n"
         self.window.addstr(PART_TABLE, 0, s)
@@ -462,27 +471,41 @@ def make_fn(ret, doc=""):
     fn.__doc__  = doc
     return fn
 
-def ignore_free(part, fn):
-    if part.type & parted.PARTITION_FREESPACE:
-        return ""
-    return fn()
+def if_active(part, fn):
+    if part.active:
+        return fn()
+    return ""
 
-def get_partitions(disk):
-    """Get all primary, logical, extended, and free space partitions."""
-    partitions = disk.partitions
-    free_space = disk.getFreeSpacePartitions()
-    partitions = sorted(list(partitions) + free_space,
-                        key = lambda ps: ps.geometry.start)
-    return partitions
+def get_partitions(disk, ext=None, debug=None):
+    """Get all primary, logical, and free space partitions.
+
+    If ext is set to True, include the extended partition. If debug is set to
+    True, include all partitions
+
+    """
+    parts = []
+    part = disk.getFirstPartition()
+
+    while part:
+        if ext is None and debug is None:
+            if part.type & parted.PARTITION_EXTENDED:
+                part = part.nextPartition()
+                continue
+        if debug is None:
+            if part.type & parted.PARTITION_METADATA or \
+               part.type & parted.PARTITION_PROTECTED:
+                part = part.nextPartition()
+                continue
+        parts.append(part)
+        part = part.nextPartition()
+
+    return parts
 
 def toggle_flag(part, flag):
     if part.getFlag(flag):
         part.unsetFlag(flag)
     else:
         part.setFlag(flag)
-
-def minus_ext(parts):
-    return [p for p in parts if p != p.disk.getExtendedPartition()]
 
 def grow_ext(part):
     """Grow, or create and grow, an extended partition to max size."""
@@ -540,7 +563,7 @@ def check_free_space(part):
 
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
-    parts = get_partitions(part.disk)
+    parts = get_partitions(part.disk, ext=True)
     for p, i in zip(parts, range(len(parts))):
         if p.type & parted.PARTITION_EXTENDED:
             index = i
@@ -593,7 +616,11 @@ def start_curses(stdscr, device):
 
 def main():
     try:
-        device = parted.Device(sys.argv[1])
+        if sys.argv[1] == "--debug":
+            del sys.argv[1]
+            global DEBUG
+            DEBUG = True
+        device = parted.getDevice(sys.argv[1])
         parted.Disk(device).minimizeExtendedPartition()
     except IndexError:
         sys.stderr.write("ERROR: you must enter a device path\n")
