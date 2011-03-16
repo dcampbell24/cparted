@@ -10,7 +10,6 @@ import curses
 import curses.textpad
 import sys
 import platform
-from functools import reduce
 
 import parted
 
@@ -301,7 +300,7 @@ class Menu(object):
 
         lines = help__.splitlines(True)
         while len(lines) > 0:
-            s = reduce(lambda x, y: x + y, lines[:self.window_lines - 3])
+            s = "".join(lines[:self.window_lines - 3])
             del lines[:self.window_lines - 3]
             help_win.erase()
             help_win.insstr(0, 0, s)
@@ -459,7 +458,7 @@ class Menu(object):
         """Create a new partition table on the device."""
         arch = platform.machine()
         cancel = make_fn(None, "Don't create a new disklabel (partition table).")
-        fs = map(make_fn, parted.archLabels[arch])
+        fs = [make_fn(f) for f in parted.archLabels[arch]]
         ty = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
         if ty:
             self.disk = parted.freshDisk(self.device, ty)
