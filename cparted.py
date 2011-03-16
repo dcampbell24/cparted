@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 """
 Copyright (C) 2011 David Campbell <davekong@archlinux.us>
 This program is licensed under the GPL. See COPYING for the full license.
