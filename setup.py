@@ -8,15 +8,10 @@ try:
 
     setup(name='cparted',
           version='0.1dev',
-          description='Curses based disk partition manipulation program',
           author='David Campbell',
           author_email='davekong@archlinux.us',
           url='https://github.com/davekong/cparted',
-          scripts=['cparted'],
-          requires=['pyparted'],
-          data_files=[('/usr/share/man/man8', ['cparted.8']),
-                      ('/usr/share/doc/cparted', ['README.md'])
-                     ],
+          description='Curses based disk partition manipulation program',
           classifiers=[
               'Environment :: Console :: Curses',
               'Intended Audience :: System Administrators',
@@ -24,6 +19,11 @@ try:
               'Natural Language :: English',
               'Programming Language :: Python :: 2.7',
           ],
+          data_files=[('/usr/share/man/man8', ['cparted.8']),
+                      ('/usr/share/doc/cparted', ['README.md'])
+                     ],
+          requires=['pyparted'],
+          scripts=['cparted'],
          )
 finally:
     os.remove('cparted')
