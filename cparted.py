@@ -403,7 +403,7 @@ class Menu(object):
             try:
                 length = float(textbox.edit(accept_bs))
                 if self.unit != "sectors":
-                    length = parted.bytesToSectors(length, self.unit, sector_size)
+                    length = parted.sizeToSectors(length, self.unit, sector_size)
                 else:
                     length = int(length)
             except Exception as e:
