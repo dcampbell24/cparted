@@ -9,7 +9,6 @@ This program is a curses front end to pyparted that mimics cfdisk.
 import curses
 import curses.textpad
 import sys
-import platform
 
 import parted
 
@@ -456,9 +455,8 @@ class Menu(object):
 
     def new_table(self):
         """Create a new partition table on the device."""
-        arch = platform.machine()
-        cancel = make_fn(None, "Don't create a new disklabel (partition table).")
-        fs = [make_fn(f) for f in parted.archLabels[arch]]
+        cancel = make_fn(None, "Don't create a new partition table.")
+        fs = [make_fn(f) for f in parted.getLabels()]
         ty = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
         if ty:
             self.disk = parted.freshDisk(self.device, ty)
