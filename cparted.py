@@ -31,11 +31,11 @@ Command      Meaning
   h          Print this screen.
   n          Create new partition from free space.
   p          Print partition table to screen or to a file.
-             If printing to a file, the table will be appended to the given
-             file. The path may be relative or absolute.
+             If printing to a file, the table will be appended
+             to the given file. The path may be relative or absolute.
   q          Quit program without writing partition table.
-  u          Change units of the partition size display.
-             Rotates through MB, sectors and cylinders.
+  u          Change units of the partition size display and used to
+             create new partitions.
   W          Write partition table to disk (must enter upper case W).
              Since this might destroy data on the disk, you must
              either confirm or deny the write by entering `y' (yes) or
