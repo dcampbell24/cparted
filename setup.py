@@ -7,7 +7,7 @@ try:
     shutil.copy('cparted.py', 'cparted')
 
     setup(name='cparted',
-          version='0.1dev',
+          version='0.1',
           author='David Campbell',
           author_email='davekong@archlinux.us',
           url='https://github.com/davekong/cparted',

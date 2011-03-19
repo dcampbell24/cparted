@@ -12,7 +12,7 @@ import sys
 
 import parted
 
-__version__ = ""
+__version__ = "0.1"
 
 help__=\
 """
