@@ -26,21 +26,24 @@ Copyright (C) 2011 David Campbell <davekong@archlinux.us>
 
 Command      Meaning
 -------      -------
-  b          Toggle bootable flag of the current partition
-  d          Delete the current partition
-  h          Print this screen
-  n          Create new partition from free space
-  q          Quit program without writing partition table
-  u          Change units of the partition size display
-             Rotates through MB, sectors and cylinders
-  W          Write partition table to disk (must enter upper case W)
+  b          Toggle bootable flag of the current partition.
+  d          Delete the current partition.
+  h          Print this screen.
+  n          Create new partition from free space.
+  p          Print partition table to screen or to a file.
+             If printing to a file, the table will be appended to the given
+             file. The path may be relative or absolute.
+  q          Quit program without writing partition table.
+  u          Change units of the partition size display.
+             Rotates through MB, sectors and cylinders.
+  W          Write partition table to disk (must enter upper case W).
              Since this might destroy data on the disk, you must
-             either confirm or deny the write by entering `yes' or
-             `no'
-Up Arrow     Move cursor to the previous partition
-Down Arrow   Move cursor to the next partition
-CTRL-L       Redraws the screen
-  ?          Print this screen
+             either confirm or deny the write by entering `y' (yes) or
+             `n' (no).
+Up Arrow     Move cursor to the previous partition.
+Down Arrow   Move cursor to the next partition.
+CTRL-L       Redraws the screen.
+  ?          Print this screen.
 
 Note: All of the commands can be entered with either upper or lower
 case letters (except for Writes).
@@ -64,15 +67,11 @@ class Menu(object):
        functions for drawing them, and contains the options functions."""
 
     def __init__(self, window, device):
-        self.part_opts = (("Help", self.help_), ("Delete", self.delete),
-                          ("Bootable", self.bootable), ("Units", self.units),
-                          ("Write", self.write), ("New Table", self.new_table),
-                          ("Quit", self.quit))
-        self.free_opts = (("Help", self.help_), ("New", self.new),
-                          ("Units", self.units), ("Write", self.write),
-                          ("New Table", self.new_table), ("Quit", self.quit))
         self.meta_opts = (("Help", self.help_), ("Units", self.units),
+                          ("Write", self.write), ("Print", self.print_),
                           ("New Table", self.new_table), ("Quit", self.quit))
+        self.part_opts = (("Delete", self.delete), ("Bootable", self.bootable)) + self.meta_opts
+        self.free_opts = (("New", self.new),) + self.meta_opts
         self.device = device
         self.disk = parted.Disk(device)
         self.partitions = get_partitions(self.disk, debug=DEBUG)
@@ -107,6 +106,31 @@ class Menu(object):
         header += self.format_fields(part_fields) + "\n"
         header += "-" * self.window_width + "\n"
         return header
+
+    @property
+    def table_string(self):
+        part_fields = ("Name", "Flags", "Part Type", "FS Type", "Size({:})".format(self.unit))
+        part_values = ()
+        for part in self.partitions:
+            part_values += ((if_active(part, part.getDeviceNodeName),
+                            if_active(part, part.getFlagsAsString),
+                            part_type(part), fs_type(part),
+                            int(part.getLength(self.unit))),)
+        widths = [max([len(str(v)) for v in vs]) for vs in zip(*part_values)]
+        widths = [max(w) for w in zip(widths, [len(f) for f in part_fields])]
+
+        def print_fields(cols):
+            return "{:<{a}} {:<{b}} {:<{c}} {:<{d}} {:>{e}}".\
+                    format(*cols, a = widths[0] + 1, b = widths[1] + 1,
+                           c = widths[2] + 1, d = widths[3] + 1, e = widths[4] + 1)
+
+        table = ""
+        table += print_fields(part_fields) + "\n"
+        table += "-" * len(print_fields(part_fields)) + "\n"
+        for part in part_values:
+            table += print_fields(part) + "\n"
+
+        return table
 
     @property
     def window_lines(self):
@@ -157,7 +181,7 @@ class Menu(object):
         """Change the currently selected partition."""
         self.__partition_number = part
         self.__partition = self.partitions[part]
-        self.selected_option = 1 # Delete/New
+        self.selected_option = 0 # Delete/New/Help
         if self.__partition.type & parted.PARTITION_FREESPACE:
             self.vis_opts = self.free_opts
         elif self.__partition.type & parted.PARTITION_METADATA or \
@@ -278,6 +302,38 @@ class Menu(object):
     ###########################################################################
     ## Option menu functions
     ###########################################################################
+    def print_(self):
+        """Print partition table to the screen or to a file."""
+        text = "Enter filename, or press RETURN to display on screen: "
+        offset = self.center(text + (20 * "-"))
+        self.window.hline(self.menu_line, 0, " ", self.window_width)
+        self.window.addstr(self.menu_line, offset, text)
+        self.window.refresh()
+        editwin = curses.newwin(1, 20, self.menu_line, offset + len(text))
+        editwin.erase()
+        textbox = curses.textpad.Textbox(editwin)
+        filename = textbox.edit(lambda k: curses.KEY_BACKSPACE if k == 127 else k)
+        if filename:
+            try:
+                with open(filename.strip(), 'a') as f:
+                    f.write(self.table_string)
+                    f.flush
+            except Exception as e:
+                self.refresh_menu()
+                self.draw_info("ERROR: {:}".format(e))
+                return
+        else:
+            table_win = curses.newwin(self.window_lines, self.window_width, 0, 0)
+            table_win.overlay(self.window)
+            table_win.erase()
+            table_win.insstr(0, 0, self.table_string)
+            info = "Press a key to continue."
+            table_win.addstr(self.window_lines - 1, self.center(info), info)
+            table_win.getch()
+            self.window.redrawwin()
+
+        self.refresh_menu()
+
     def bootable(self):
         """Toggle bootable flag of the current partition."""
         toggle_flag(self.__partition, parted.PARTITION_BOOT)
