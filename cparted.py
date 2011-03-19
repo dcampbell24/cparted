@@ -622,15 +622,18 @@ def check_free_space(part):
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
     parts = get_partitions(part.disk, ext=True)
+    # Find the index of the extended partition.
     for p, i in zip(parts, range(len(parts))):
         if p.type & parted.PARTITION_EXTENDED:
             index = i
-    if parts[index - 1] == part:
+    # See if the partition before the extended one is free space.
+    if index > 0 and parts[index - 1] == part:
         return True
+
     x = 1
-    if parts[index + x] == part:
+    if (index + x) < len(parts) and parts[index + x] == part:
         return True
-    while parts[index + x].type & parted.PARTITION_LOGICAL:
+    while (index + x) < len(parts) and parts[index + x].type & parted.PARTITION_LOGICAL:
         x += 1
         if parts[index + x] == part:
             return True
