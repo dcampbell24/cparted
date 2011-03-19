@@ -1,5 +1,5 @@
 :man manual: cparted Manual
-:revdate: 14 March 2011
+:revdate: 18 March 2011
 
 CPARTED(8)
 ==========
