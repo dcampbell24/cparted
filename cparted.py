@@ -549,6 +549,11 @@ def get_partitions(disk, ext=None, debug=None):
                part.type & parted.PARTITION_PROTECTED:
                 part = part.nextPartition()
                 continue
+            # Hide the metadata regions of extended and primary partitions.
+            if part.type & parted.PARTITION_FREESPACE:
+                if part.getLength() < part.disk.device.optimumAlignment.grainSize:
+                    part = part.nextPartition()
+                    continue
         parts.append(part)
         part = part.nextPartition()
 

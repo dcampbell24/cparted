@@ -43,15 +43,13 @@ Start
 \fBcparted\fR
 in debug mode\&. This causes
 \fBcparted\fR
-to display extended, metadata, and protected partitions, and sets the default unit to sectors\&.
+to display extended, metadata, and protected partitions, and sets the default unit to sectors\&. This will also prevent the hiding of metadata regions libparted marks as free space\&.
 .RE
 .SH "BUGS"
 .sp
 Warning: this software has not been widely tested and has a least a few issues\&.
 .sp
-When creating primary partitions, there tend to be gaps of free space between the partitions that are not usable\&. These gaps are typically just smaller than the optimal alignment grain size of the HDD (or SSD)\&. These gaps may be hidden in a future release, but are left visible for now as the author does not know if there is a proper way to get rid of them\&.
-.sp
-If the user creates a logical partition on a disk without any primary partitions, two regions of free space may appear next to each other, and writing to disk may corrupt the partition table\&. Creating a logical partition without any primary partitions is allowed at this point, despite the known issue, for testing reasons, and because there is no reason a user should not be able to have a msdos partition table without primary partitions\&.
+Sometimes, when adding a logical partition, two regions of free space will appear next to each other\&. This is bad\&. Do not write to disk if this happens\&. If you do, the partition table will probably be corrupted, and you will have to create a new one\&. One sure way to trigger this bug seems to be creating a logical partition on a disk without any primary partitions\&.
 .sp
 If you notice additional bugs or have feature requests, create issues for them at https://github\&.com/davekong/cparted/issues\&.
 .SH "SEE ALSO"

@@ -11,20 +11,13 @@ for testing at the moment.
 
 [1]: http://git.fedorahosted.org/git/?p=pyparted.git
 
-BUGS
-----
-When creating primary partitions, there tend to be gaps of free
-space between the partitions that are not usable. These gaps are typically
-just smaller than the optimal alignment grain size of the HDD (or SSD). These
-gaps may be hidden in a future release, but are left visible for now as the
-author does not know if there is a proper way to get rid of them.
-
-If the user creates a logical partition on a disk without any primary
-partitions, two regions of free space may appear next to each other, and
-writing to disk may corrupt the partition table. Creating a logical partition
-without any primary partitions is allowed at this point, despite the known
-issue, for testing reasons, and because there is no reason a user should not
-be able to have a msdos partition table without primary partitions.
+WARNING
+-------
+Sometimes, when adding a logical partition, two regions of free space will
+appear next to each other. This is bad. Do not write to disk if this happens.
+If you do, the partition table will probably be corrupted, and you will have
+to create a new one. One sure way to trigger this bug seems to be creating a
+logical partition on a disk without any primary partitions.
 
 HACKING
 -------
