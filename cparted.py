@@ -185,7 +185,8 @@ class Menu(object):
         if self.__partition.type & parted.PARTITION_FREESPACE:
             self.vis_opts = self.free_opts
         elif self.__partition.type & parted.PARTITION_METADATA or \
-             self.__partition.type & parted.PARTITION_PROTECTED:
+             self.__partition.type & parted.PARTITION_PROTECTED or \
+             self.__partition.type & parted.PARTITION_EXTENDED:
             self.vis_opts = self.meta_opts
         else:
             self.vis_opts = self.part_opts
