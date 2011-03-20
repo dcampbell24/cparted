@@ -622,22 +622,24 @@ def check_free_space(part):
 
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
-    parts = get_partitions(part.disk, ext=True)
-    # Find the index of the extended partition.
-    for p, i in zip(parts, range(len(parts))):
-        if p.type & parted.PARTITION_EXTENDED:
-            index = i
-    # See if the partition before the extended one is free space.
-    if index > 0 and parts[index - 1] == part:
+    # Check to see if the partition after part is the extended partition.
+    if part.nextPartition() and \
+       part.nextPartition().type & parted.PARTITION_EXTENDED:
         return True
 
-    x = 1
-    if (index + x) < len(parts) and parts[index + x] == part:
-        return True
-    while (index + x) < len(parts) and parts[index + x].type & parted.PARTITION_LOGICAL:
-        x += 1
-        if parts[index + x] == part:
+    # Check to see if part comes after the extended partition or a logical one.
+    ext = part.disk.getExtendedPartition()
+    if ext is None:
+        return False
+
+    ext = ext.nextPartition()
+    while ext:
+        if ext == part:
             return True
+        if not ext.type & parted.PARTITION_LOGICAL:
+            return False
+        ext = ext.nextPartition()
+
     return False
 
 def start_curses(stdscr, device):
