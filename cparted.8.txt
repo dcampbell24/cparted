@@ -1,5 +1,5 @@
 :man manual: cparted Manual
-:revdate: 18 March 2011
+:revdate: 23 March 2011
 
 CPARTED(8)
 ==========
@@ -27,8 +27,8 @@ OPTIONS
 *\--debug*::
     Start *cparted* in debug mode. This causes *cparted* to display extended,
     metadata, and protected partitions, and sets the default unit to sectors.
-    This will also prevent the hiding of metadata regions libparted marks as free
-    space.
+    This will also prevent the hiding of small unusable regions created from
+    aligning the partitions.
 
 
 BUGS
