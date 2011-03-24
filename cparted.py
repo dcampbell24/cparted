@@ -4,8 +4,8 @@ Copyright (C) 2011 David Campbell <davekong@archlinux.us>
 This program is licensed under the GPL. See COPYING for the full license.
 
 This program is a curses front end to pyparted that mimics cfdisk.
-"""
 
+"""
 import curses
 import curses.textpad
 import sys
@@ -26,6 +26,7 @@ END = 1
 
 NAME = 0
 FUNC = 1
+
 
 class Menu(object):
     """Holds the state of the options menu and partition table, provides
@@ -547,6 +548,7 @@ Note: All of the commands can be entered with either upper or lower
             self.disk = parted.freshDisk(self.device, ty)
         self.refresh_menu()
 
+
 def make_fn(ret, doc=""):
     def fn():
         return ret
@@ -584,6 +586,7 @@ def get_partitions(disk, ext=None, debug=None):
 
     return parts
 
+
 def grow_ext(part):
     """Grow, or create and grow, an extended partition to max size."""
     ext = part.disk.getExtendedPartition()
@@ -594,6 +597,7 @@ def grow_ext(part):
         c = parted.Constraint(exactGeom = part.geometry)
         p = parted.Partition(part.disk, parted.PARTITION_EXTENDED, geometry = part.geometry)
         part.disk.addPartition(p, c)
+
 
 def check_free_space(part):
     """Check to see what the region of free space can be used for."""
@@ -619,6 +623,7 @@ def check_free_space(part):
     else:
         return "Primary"
 
+
 def next_to_extended(part):
     """True if next to or inside of the extended partition"""
     # Check to see if the partition after part is the extended partition.
@@ -640,6 +645,7 @@ def next_to_extended(part):
         ext = ext.nextPartition()
 
     return False
+
 
 def start_curses(stdscr, device):
     # Allow capture of KEY_ENTER via '\n'.
@@ -681,6 +687,7 @@ def start_curses(stdscr, device):
         if key == ord("W"):
             menu.call("Write")
 
+
 def main():
     try:
         if sys.argv[1] == "--debug":
@@ -697,6 +704,7 @@ def main():
         sys.exit(1)
     else:
         curses.wrapper(start_curses, device)
+
 
 if __name__ == "__main__":
     main()
