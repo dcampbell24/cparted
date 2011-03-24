@@ -14,41 +14,6 @@ import parted
 
 __version__ = "0.1"
 
-help__=\
-"""
-Help Screen for cparted
-
-This is cparted, a curses based disk partitioning program, which
-allows you to create, delete and modify partitions on your hard
-disk drive.
-
-Copyright (C) 2011 David Campbell <davekong@archlinux.us>
-
-Command      Meaning
--------      -------
-  b          Toggle bootable flag of the current partition.
-  d          Delete the current partition.
-  h          Print this screen.
-  n          Create new partition from free space.
-  p          Print partition table to screen or to a file.
-             If printing to a file, the table will be appended
-             to the given file. The path may be relative or absolute.
-  q          Quit program without writing partition table.
-  u          Change units of the partition size display and used to
-             create new partitions.
-  W          Write partition table to disk (must enter upper case W).
-             Since this might destroy data on the disk, you must
-             either confirm or deny the write by entering `y' (yes) or
-             `n' (no).
-Up Arrow     Move cursor to the previous partition.
-Down Arrow   Move cursor to the next partition.
-CTRL-L       Redraws the screen.
-  ?          Print this screen.
-
-Note: All of the commands can be entered with either upper or lower
-case letters (except for Writes).
-"""
-
 DEBUG = None
 PART_TABLE = 10 # Where to start listing partitions from.
 PART_TYPES = ("Logical", "Extended", "Free Space", "Metadata", "Protected")
@@ -350,11 +315,42 @@ class Menu(object):
 
     def help_(self):
         """Print help screen."""
+        lines = """\
+Help Screen for cparted
+
+This is cparted, a curses based disk partitioning program, which
+allows you to create, delete and modify partitions on your hard
+disk drive.
+
+Copyright (C) 2011 David Campbell <davekong@archlinux.us>
+
+Command      Meaning
+-------      -------
+  b          Toggle bootable flag of the current partition.
+  d          Delete the current partition.
+  h          Print this screen.
+  n          Create new partition from free space.
+  p          Print partition table to screen or to a file.
+             If printing to a file, the table will be appended
+             to the given file. The path may be relative or absolute.
+  q          Quit program without writing partition table.
+  u          Change units of the partition size display and used to
+             create new partitions.
+  W          Write partition table to disk (must enter upper case W).
+             Since this might destroy data on the disk, you must
+             either confirm or deny the write by entering `y' (yes) or
+             `n' (no).
+Up Arrow     Move cursor to the previous partition.
+Down Arrow   Move cursor to the next partition.
+CTRL-L       Redraws the screen.
+  ?          Print this screen.
+
+Note: All of the commands can be entered with either upper or lower
+      case letters (except for Writes).""".splitlines(True)
+        info = "Press a key to continue."
         help_win = curses.newwin(self.window_lines, self.window_width, 0, 0)
         help_win.overlay(self.window)
-        info = "Press a key to continue."
 
-        lines = help__.splitlines(True)
         while len(lines) > 0:
             s = "".join(lines[:self.window_lines - 3])
             del lines[:self.window_lines - 3]
