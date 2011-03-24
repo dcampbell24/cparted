@@ -48,6 +48,11 @@ class Menu(object):
             self.unit = "sectors"
 
     @property
+    def table_fields(self):
+        return ("Name", "Flags", "Part Type", "FS Type", "Size({:})".
+                format(self.unit))
+
+    @property
     def header(self):
         text=\
         """\
@@ -63,37 +68,38 @@ class Menu(object):
                    self.device.getLength("GB"),
                    self.device.sectorSize, self.device.physicalSectorSize,
                    self.disk.type)
-        part_fields = ("Name", "Flags", "Part Type", "FS Type",
-                       "Size({:})".format(self.unit))
         header = ""
         for line in text.splitlines():
             header += "{:^{:}}".format(line, self.window_width)
-        header += self.format_fields(part_fields) + "\n"
+        header += self.format_fields(self.table_fields) + "\n"
         header += "-" * self.window_width + "\n"
         return header
 
     @property
-    def table_string(self):
-        part_fields = ("Name", "Flags", "Part Type", "FS Type", "Size({:})".format(self.unit))
-        part_values = ()
+    def partitions_data(self):
+        data = ()
         for part in self.partitions:
-            part_values += ((if_active(part, part.getDeviceNodeName),
-                            if_active(part, part.getFlagsAsString),
-                            part_type(part), fs_type(part),
-                            int(part.getLength(self.unit))),)
-        widths = [max([len(str(v)) for v in vs]) for vs in zip(*part_values)]
-        widths = [max(w) for w in zip(widths, [len(f) for f in part_fields])]
+            data += ((if_active(part, part.getDeviceNodeName),
+                      if_active(part, part.getFlagsAsString),
+                      part_type(part), fs_type(part),
+                      int(part.getLength(self.unit))),)
+        return data
 
-        def print_fields(cols):
-            return "{:<{a}} {:<{b}} {:<{c}} {:<{d}} {:>{e}}".\
-                    format(*cols, a = widths[0] + 1, b = widths[1] + 1,
-                           c = widths[2] + 1, d = widths[3] + 1, e = widths[4] + 1)
+    @property
+    def table_string(self):
+        fields = self.partitions_data + (self.table_fields,)
+        widths = [max([len(str(v)) for v in vs]) for vs in zip(*fields)]
+
+        def format_fields(cols):
+            return "{:<{a}}  {:<{b}}  {:<{c}}  {:<{d}}  {:>{e}}".\
+                    format(*cols, a = widths[0], b = widths[1], c = widths[2],
+                           d = widths[3], e = widths[4])
 
         table = ""
-        table += print_fields(part_fields) + "\n"
-        table += "-" * len(print_fields(part_fields)) + "\n"
-        for part in part_values:
-            table += print_fields(part) + "\n"
+        table += format_fields(self.table_fields) + "\n"
+        table += "-" * len(format_fields(self.table_fields)) + "\n"
+        for part in self.partitions_data:
+            table += format_fields(part) + "\n"
 
         return table
 
@@ -193,21 +199,15 @@ class Menu(object):
         except Exception:
             self.draw_info("ERR: window too small")
 
-
     def format_fields(self, cols):
         fields = ("{:{a}} {:{a}} {:{a}} {:{a}} {:>{a}}").\
                   format(*cols, a = int(self.window_width / 5.5))
         return "{:^{:}}".format(fields, self.window_width - 1)
 
     def draw_partitions(self):
-        s = ""
-        for part in self.partitions:
-            s += self.format_fields((if_active(part, part.getDeviceNodeName),
-                                     if_active(part, part.getFlagsAsString),
-                                     part_type(part), fs_type(part),
-                                     int(part.getLength(self.unit)))) + "\n"
+        s = "\n".join([self.format_fields(p) for p in self.partitions_data])
         self.window.addstr(PART_TABLE, 0, s)
-        self.window.chgat(PART_TABLE + self.__partition_number, 0, curses.A_STANDOUT)
+        self.chgat_partition(curses.A_STANDOUT)
 
     def chgat_partition(self, attr):
         self.window.chgat(PART_TABLE + self.__partition_number, 0, attr)
