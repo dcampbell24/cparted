@@ -77,6 +77,31 @@ class Menu(object):
 
     @property
     def partitions_data(self):
+        """A tuple holding the partition data to be displayed by Menu."""
+        def if_active(part, fn):
+            if part.active:
+                return fn()
+            return ""
+
+        def fs_type(part):
+            if part.fileSystem:
+                return part.fileSystem.type
+            elif part.type & parted.PARTITION_FREESPACE:
+                return "Free Space"
+            else:
+                return ""
+
+        def part_type(part):
+            if part.type & parted.PARTITION_FREESPACE:
+                return check_free_space(part)
+            elif part.type == parted.PARTITION_NORMAL:
+                return "Primary"
+            flags = []
+            for flag, value in zip(bin(part.type)[::-1], PART_TYPES):
+                if flag == "1":
+                    flags.append(value)
+            return ", ".join(flags)
+
         data = ()
         for part in self.partitions:
             data += ((if_active(part, part.getDeviceNodeName),
@@ -302,6 +327,12 @@ class Menu(object):
 
     def bootable(self):
         """Toggle bootable flag of the current partition."""
+        def toggle_flag(part, flag):
+            if part.getFlag(flag):
+                part.unsetFlag(flag)
+            else:
+                part.setFlag(flag)
+
         toggle_flag(self.__partition, parted.PARTITION_BOOT)
         self.draw_partitions()
 
@@ -522,10 +553,6 @@ def make_fn(ret, doc=""):
     fn.__doc__  = doc
     return fn
 
-def if_active(part, fn):
-    if part.active:
-        return fn()
-    return ""
 
 def get_partitions(disk, ext=None, debug=None):
     """Get all primary, logical, and free space partitions.
@@ -557,12 +584,6 @@ def get_partitions(disk, ext=None, debug=None):
 
     return parts
 
-def toggle_flag(part, flag):
-    if part.getFlag(flag):
-        part.unsetFlag(flag)
-    else:
-        part.setFlag(flag)
-
 def grow_ext(part):
     """Grow, or create and grow, an extended partition to max size."""
     ext = part.disk.getExtendedPartition()
@@ -573,25 +594,6 @@ def grow_ext(part):
         c = parted.Constraint(exactGeom = part.geometry)
         p = parted.Partition(part.disk, parted.PARTITION_EXTENDED, geometry = part.geometry)
         part.disk.addPartition(p, c)
-
-def part_type(part):
-    if part.type & parted.PARTITION_FREESPACE:
-        return check_free_space(part)
-    elif part.type == parted.PARTITION_NORMAL:
-        return "Primary"
-    flags = []
-    for flag, value in zip(bin(part.type)[::-1], PART_TYPES):
-        if flag == "1":
-            flags.append(value)
-    return ", ".join(flags)
-
-def fs_type(part):
-    if part.fileSystem:
-        return part.fileSystem.type
-    elif part.type & parted.PARTITION_FREESPACE:
-        return "Free Space"
-    else:
-        return ""
 
 def check_free_space(part):
     """Check to see what the region of free space can be used for."""
