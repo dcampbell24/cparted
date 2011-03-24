@@ -334,6 +334,7 @@ Command      Meaning
              If printing to a file, the table will be appended
              to the given file. The path may be relative or absolute.
   q          Quit program without writing partition table.
+  t          Create a new partition table.
   u          Change units of the partition size display and used to
              create new partitions.
   W          Write partition table to disk (must enter upper case W).
@@ -667,10 +668,14 @@ def start_curses(stdscr, device):
             menu.call("Help")
         if key == ord("n") or key == ord("N"):
             menu.call("New")
+        if key == ord("p") or key == ord("P"):
+            menu.call("Print")
         if key == ord("q") or key == ord("Q"):
             menu.call("Quit")
         if key == ord("u") or key == ord("U"):
             menu.call("Units")
+        if key == ord("t") or key == ord("T"):
+            menu.call("New Table")
         if key == ord("W"):
             menu.call("Write")
 
