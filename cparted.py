@@ -407,7 +407,7 @@ Note: All of the commands can be entered with either upper or lower
         MiB = make_fn("MiB", "mebibytes")
         GiB = make_fn("GiB", "gibibytes")
         sectors = make_fn("sectors", "For those full of awesome.")
-        cancel = make_fn(None, "Don't chnage the units.")
+        cancel = make_fn(None, "Don't change the units.")
         fs = (B, kB, MB, GB, KiB, MiB, GiB, sectors)
         u = self.sub_menu(tuple([(f(), f) for f in fs]) + (("Cancel", cancel),))
         if u:
