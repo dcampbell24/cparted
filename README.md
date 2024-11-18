@@ -1,7 +1,7 @@
-cparted
-========
+# cparted
 
-Copyright (C) 2011 David Campbell <davekong@archlinux.us>
+Copyright (C) 2011 David Campbell <dcampbell24@gmail.com>
+
 This program is licensed under the GPL. See COPYING for the full license.
 
 This program is a curses front end to [pyparted][1] that mimics cfdisk. It
@@ -11,16 +11,16 @@ for testing at the moment.
 
 [1]: http://git.fedorahosted.org/git/?p=pyparted.git
 
-WARNING
--------
+## WARNING
+
 Sometimes, when adding a logical partition, two regions of free space will
 appear next to each other. This is bad. Do not write to disk if this happens.
 If you do, the partition table will probably be corrupted, and you will have
 to create a new one. One sure way to trigger this bug seems to be creating a
 logical partition on a disk without any primary partitions.
 
-HACKING
--------
+## HACKING
+
 If you wish to contribute to [cparted][2], please fork it on github, and then make
 pull requests. Your code should follow the guidelines of [PEP 8][3].
 
